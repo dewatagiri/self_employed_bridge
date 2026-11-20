@@ -161,7 +161,9 @@ def cmd_simulate(args, cfg):
         damage_grid = simulate.damage_grid(cfg, out["draws"])
         rr_grid = riskreturn.rr_grid(cfg, out["draws"])
         reserve_rows = riskreturn.reserve_table(cfg, out["draws"])
-        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid, rr_grid, reserve_rows), encoding="utf-8")
+        viability = riskreturn.viability_grid(cfg, out["draws"])
+        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid, rr_grid, reserve_rows, viability),
+                                  encoding="utf-8")
         lines.append(f"Wrote {args.out}")
     _out(args, {"summary": s}, "\n".join(lines))
 

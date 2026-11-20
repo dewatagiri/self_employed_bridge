@@ -233,6 +233,20 @@ two of them. What the cohort does not spend goes back (A16). The report shows ea
 with its money tied up charged at its own required return, a table of what each reserve size costs and does for each, and the
 **joint result**: what the two of them lose or earn together.
 
+## Path to viability
+
+Low-ticket loans are usually not profitable, and serving them is the mandate (decision A18). A loan earns **by time** (the cap ×
+days ÷ 365 of its size) but loses **by the loan**, so a short tenor, cash payments to the painter, damaged projects and a high cost to
+serve all work against it. The report's *Path to viability* section has five sliders (the chance the customer pays the painter in cash,
+the damage rate, how much is lost on bad loans, the tenor, and the cost to serve) and ends in a **verdict**:
+
+- **Priced below cost**: the DFI and the guarantor lose money together, by so much per loan.
+- **Costs covered, but no split of the cap gives both their required return.**
+- **A split of the cap exists where both earn their required return**, and the section says what each party's fee would have to be.
+
+Where a gap remains it is priced **per additional borrower**, which is what to ask a party that values additionality to pay. The cap
+is a rate a year and losses come per loan, so the tenor and the loss rate matter more than the ticket size.
+
 ## Loss trip wire
 
 `stop_lines.pause_if_loss_rate_over` is the line (for example 4%): when the loss so far, after recoveries, passes it as
@@ -263,7 +277,7 @@ a share of the money lent on loans with a known outcome, **new loans and top-ups
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 206 tests (`pytest`).
+(open in a browser) · 217 tests (`pytest`).
 
 ## Licence
 

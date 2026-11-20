@@ -110,6 +110,12 @@ damage_sliders:                         # values the damage / trip wire section 
   damage_rate: null
   loss_per_damaged_loan: null
   trip_wire: null                      # list; null inside the list means no trip wire
+viability_sliders:                      # values the path-to-viability section precomputes; null = section hidden
+  bypass_chance: null
+  damage_rate: null
+  loss_on_bad_loans_scale: null         # 1.0 = the recovery rates in simulation.recovery_rate_by_outcome; 0.75 = a quarter less lost on bad loans
+  tenor_days: null
+  cost_to_serve_per_bridge: null
 market_reference:                       # public, dated; comparison only, never used in a decision
   approved_by_author: false             # flip to true once the author has checked each source
   margin_of_advance:                    # market products measure it against contract or invoice value

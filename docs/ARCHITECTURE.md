@@ -106,6 +106,21 @@ Priced below cost on purpose (A13). The engine reports the cost and measures wha
  JOINT RESULT = what the two lose or earn together = the real cost of the programme
 ```
 
+## Path to viability
+
+```
+ five levers: cash-payment chance · damage rate · loss on bad loans · tenor · cost to serve
+        │            (each combination run on the same random draws)
+        ▼
+ loan earns  = cap × days ÷ 365          loan loses = credit loss per loan + cost to serve
+        │
+        ▼
+ joint result of DFI + guarantor, after funding the reserve ──┬─ below zero ─▶ PRICED BELOW COST (gap priced per additional borrower)
+        │                                                     └─ not below ───▶ do the two break-even fees fit inside the cap?
+        ▼                                                                         no  ─▶ costs covered, no split works
+ fees each party needs for its required return                                    yes ─▶ A WORKING SPLIT EXISTS (shown)
+```
+
 ## Loss trip wire
 
 ```

@@ -28,7 +28,7 @@ import statistics
 from typing import Optional
 
 from .config import ConfigInvalid, get, require
-from .simulate import Draw, Run, pct, run_cohort
+from .simulate import ADDITIONAL_SHARES, Draw, Run, pct, run_cohort
 
 COST_KEYS = ["financier.cost_of_funds_pa", "financier.capital_pct_of_drawn", "financier.cost_of_equity_pa",
              "guarantor.cost_of_capital_pa", "guarantor.admin_cost_per_bridge", "simulation.cohort_days",
@@ -206,3 +206,87 @@ def reserve_table(cfg: dict, draws: list[list[Draw]]) -> Optional[list[dict]]:
                      "guarantor_roc": x["guarantor"]["ar_return_on_capital_pa"] if x["guarantor"] else None,
                      "p_reserve_out": x["reserve"]["p_reserve_out"]})
     return rows
+
+
+# ---------- path to viability (author decision A18) ----------
+#
+# Can the product work at the all-in cap, and what would it take? The cap earns by time (cap x days / 365 of a loan) while losses come
+# per loan, so a short tenor, cash payments to the painter, damaged projects and a high cost to serve all work against it. This runs the
+# whole picture over five levers: the chance the customer pays the painter in cash (bypass), the damage rate, how much is lost on bad
+# loans, the tenor, and the cost to serve. Verdicts compare each party's result after funding the reserve with its own hurdle.
+#
+# Assumptions: the chance of damage, lateness and cash per loan does not change with the tenor; the loss on bad loans is the config's
+# own recovery rates scaled (1.0 = as in the config, 0.75 = a quarter less lost) for the three bad outcomes: rejected, not
+# completed, and cash to the painter.
+
+VIABILITY_AXES = ("bypass_chance", "damage_rate", "loss_on_bad_loans_scale", "tenor_days", "cost_to_serve_per_bridge")
+BAD_OUTCOMES = ("dispute", "abandoned", "bypass")
+VERDICTS = {0: "Priced below cost: the two parties lose money together",
+            1: "Costs are covered, but no split of the cap gives both parties their required return",
+            2: "A split of the cap exists where both parties earn their required return"}
+
+
+def viability_config(cfg: dict, bypass: float, damage: float, scale: float) -> Optional[dict]:
+    """cfg with the cash-payment chance, damage rate and loss scale set; None if the chances add to more than 100%."""
+    share = get(cfg, "simulation.damage_dispute_share")
+    c = copy.deepcopy(cfg)
+    p = c["simulation"]["outcome_probs"]
+    p["bypass"], p["dispute"], p["abandoned"] = bypass, damage * share, damage * (1 - share)
+    p["on_time"] = 1 - p["late"] - bypass - damage
+    if p["on_time"] < -1e-12:
+        return None
+    p["on_time"] = max(0.0, p["on_time"])
+    rec = c["simulation"]["recovery_rate_by_outcome"]
+    for o in BAD_OUTCOMES:
+        rec[o] = 1 - (1 - rec[o]) * scale
+    return c
+
+
+def viability_cell(runs: list[Run], cfg: dict, cap_pa: float, gfee_pa: float, cts: float, tenor: int) -> Optional[dict]:
+    """One setting of the five levers. `cfg` must already carry the outcome settings the runs were made with."""
+    c = copy.deepcopy(cfg)
+    c["tenor"]["typical_days"] = tenor
+    x = risk_return(runs, c, cap_pa, gfee_pa, cts)
+    if x is None or x["reserve"] is None:
+        return None
+    m = statistics.fmean
+    n, lent = m([r.n_released for r in runs]) or 1.0, m([r.released for r in runs]) or 1.0
+    d, g = x["dfi"], x["guarantor"]
+    d_ok = d["ar_return_on_capital_pa"] >= d["hurdle"]
+    g_ok = True if g is None else g["ar_return_on_capital_pa"] >= g["hurdle"]
+    joint = x["joint_result"]
+    # 2: the two fees each party needs (its break-even after funding the reserve) fit inside the cap, so a working split exists.
+    needed = x["cost_covering_all_in_after_reserve_pa"]
+    verdict = 2 if needed <= cap_pa else (1 if joint >= 0 else 0)
+    per_loan = joint / n
+    cell = {"loans": n, "loss_pct": m([r.total_loss for r in runs]) / lent, "revenue_pct": cap_pa * tenor / 365,
+            "joint_group": joint, "joint_loan": per_loan, "joint_per_1000": joint / lent * 1000,
+            "dfi_roc": d["ar_return_on_capital_pa"], "guarantor_roc": g["ar_return_on_capital_pa"] if g else None,
+            "dfi_hurdle": d["hurdle"], "guarantor_hurdle": g["hurdle"] if g else None,
+            "rate_needed": x["cost_covering_all_in_after_reserve_pa"], "gap_per_loan": x["gap_after_reserve_per_loan"],
+            "p_reserve_out": x["reserve"]["p_reserve_out"], "verdict": verdict, "split_works_now": d_ok and g_ok,
+            "dfi_fee_needed": d["ar_break_even_fee_pa"], "guarantor_fee_needed": g["ar_break_even_fee_pa"] if g else 0.0,
+            "dfi_fee_now": d["fee_pa"], "guarantor_fee_now": gfee_pa}
+    for sh in ADDITIONAL_SHARES:
+        cell[f"per_additional_{int(sh * 100)}"] = (-per_loan / sh) if per_loan < 0 else 0.0
+    return cell
+
+
+def viability_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
+    """The grid for the report's sliders, keyed by slider position (bypass|damage|loss scale|tenor|cost to serve)."""
+    sl = {k: get(cfg, f"viability_sliders.{k}") for k in VIABILITY_AXES}
+    cap = get(cfg, "pricing.all_in_rate_cap_pa")
+    if not all(sl.values()) or cap is None or any(get(cfg, k) is None for k in COST_KEYS + RESERVE_KEYS + ["simulation.damage_dispute_share"]):
+        return None
+    require(cfg, ["pricing.guarantee_fee_rate_on_drawn"])
+    gfee = get(cfg, "pricing.guarantee_fee_rate_on_drawn")
+    cells = {}
+    for bi, bypass in enumerate(sl["bypass_chance"]):
+        for di, damage in enumerate(sl["damage_rate"]):
+            for ci, scale in enumerate(sl["loss_on_bad_loans_scale"]):
+                c = viability_config(cfg, bypass, damage, scale)
+                runs = [run_cohort(d, c) for d in draws] if c is not None else None
+                for ti, tenor in enumerate(sl["tenor_days"]):
+                    for si, cts in enumerate(sl["cost_to_serve_per_bridge"]):
+                        cells[f"{bi}|{di}|{ci}|{ti}|{si}"] = None if runs is None else viability_cell(runs, c, cap, gfee, cts, tenor)
+    return {"axes": sl, "cells": cells, "cap": cap, "verdicts": VERDICTS}

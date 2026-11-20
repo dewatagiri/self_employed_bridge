@@ -124,3 +124,23 @@ def test_reserve_section(built):
     cfg["layers"]["unused_reserve_returned"] = False
     h2 = report.render_simulation(out, sens, grid, cfg, "x", None, None, None, riskreturn.reserve_table(cfg, out["draws"]))
     assert "forfeited" in h2 and "goes back to the two of them" not in h2
+
+
+def test_viability_section(built):
+    import json, re
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["layers"]["guarantor_cover_pct"] = 0.7
+    cfg["viability_sliders"] = {"bypass_chance": [0.01, 0.05], "damage_rate": [0.03, 0.05], "loss_on_bad_loans_scale": [1.0, 0.5],
+                                "tenor_days": [30, 90], "cost_to_serve_per_bridge": [5, 25]}
+    vg = riskreturn.viability_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None, None, None, vg)
+    assert "Path to viability" in h and "A loan earns by time but loses by the loan" in h and 'id="vv"' in h
+    data = json.loads(re.search(r'<script type="application/json" id="vgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 2 ** 5 and set(data["verdicts"]) == {"0", "1", "2"}
+    assert "https://" not in h and "http://" not in h
+
+
+def test_viability_hidden_without_sliders(built):
+    cfg, out, sens, grid = built
+    assert "Path to viability" not in report.render_simulation(out, sens, grid, cfg, "x", None, None, None, None, None)
