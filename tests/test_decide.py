@@ -118,3 +118,21 @@ def test_advance_limit_is_shared_rule(demo):
     from self_employed_bridge.decide import advance_limit
     assert advance_limit(5000, 2000, demo) == (3000, 3000, "need")
     assert advance_limit(5000, 0, demo) == (4750, 5000, "margin_of_advance")   # demo MOA 0.95
+
+
+def test_deposit_share_out_of_range_refused(make_job, demo, exposure):
+    from self_employed_bridge.config import ConfigInvalid
+    demo["screen"]["deposit_to_materials_share"] = 1.5     # would make need 0 and release RM0
+    with pytest.raises(ConfigInvalid):
+        decide(make_job(), exposure, demo)
+
+
+def test_invoice_limit_flagged_as_invoice(make_job, demo, exposure):
+    d = decide(make_job(invoice_amount=2000), exposure, demo)
+    assert d.approved_amount == 2000
+    assert "AMOUNT_LIMITED_BY_INVOICE" in d.flags and "AMOUNT_LIMITED_BY_CAP" not in d.flags
+
+
+def test_headroom_limit_flagged_as_cap(make_job, demo):
+    d = decide(make_job(), Exposure(borrower_live_amount=14000), demo)
+    assert d.approved_amount == 1000 and "AMOUNT_LIMITED_BY_CAP" in d.flags

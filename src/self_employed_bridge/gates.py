@@ -179,7 +179,9 @@ def measures(rows: list[Bridge], cfg: dict, n_cohorts: int = 1) -> dict:
     return {
         "bridges": n,
         "jobs_completed": sum(b.outcome != "abandoned" for b in rows),
-        "on_time_share": _share(sum(b.outcome == "on_time" for b in rows), n),
+        # same definition as gate 2: on time AND paid from the customer's payment into the controlled account
+        "on_time_share": _share(sum(b.outcome == "on_time" and b.customer_paid_into_controlled_account
+                                    for b in rows), n),
         "total_loss": loss,
         "loss_to_reserve": loss / reserve if reserve else None,
         "customers_bypassed": sum(b.outcome == "bypass" for b in rows),

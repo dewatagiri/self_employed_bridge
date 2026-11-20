@@ -84,3 +84,11 @@ def test_measures(log, demo):
     assert m["bridges"] == 40 and m["customers_bypassed"] == 2
     assert m["jobs_completed"] == 39
     assert 0 <= m["share_within_target_hours"] <= 1
+
+
+def test_measures_on_time_matches_gate2(log, demo):
+    from dataclasses import replace
+    # an on-time row whose payment did not reach the controlled account must not count in either place
+    rows = [replace(log[0], outcome="on_time", customer_paid_into_controlled_account=False)] + log[1:]
+    gate2 = g.gate2(rows, demo).checks[0].value
+    assert g.measures(rows, demo)["on_time_share"] == pytest.approx(gate2)

@@ -125,10 +125,13 @@ def test_null_collections_config_raises(template):
     assert "collections.write_off_after_days" in e.value.keys
 
 
-def test_should_chase():
+def test_should_chase(demo, template):
     assert should_chase(500, 100)
     assert not should_chase(99, 100)
-    assert not should_chase(150, 100, min_expected=200)
+    demo["collections"]["min_expected_recovery_to_chase"] = 200
+    assert not should_chase(150, 100, demo) and should_chase(250, 100, demo)
+    with pytest.raises(ConfigIncomplete):
+        should_chase(500, 100, template)
 
 
 def test_claim_file_fills_and_lists_missing(demo):

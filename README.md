@@ -16,7 +16,7 @@ a bridge log. **Every limit, rate and threshold is a parameter. Nothing is hard-
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest                                    # 105 tests
+python -m pytest                                    # 109 tests
 
 bridge check-config config/params.template.yaml     # what must be set before live use (exit 1)
 bridge screen  data/example_job.json --config config/params.demo.yaml
@@ -55,6 +55,7 @@ A RM25,000 write-off under the demo layers → reserve RM10,000, guarantor RM5,0
 
 Design and data flow: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
 Every interpretation made in the build, and what is still open: [`docs/DECISIONS.md`](docs/DECISIONS.md).
+Step by step with real outputs, and who sets which parameter before going live: [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
 
 ## Margin of advance and the market
 

@@ -24,11 +24,14 @@ def advance_limit(materials_cost: float, deposit_amount: float, cfg: dict) -> tu
     Used by `decide` and by the simulator, so both apply the same rule.
     """
     require(cfg, ["screen.deposit_to_materials_share", "release.margin_of_advance", "caps.per_bridge"])
+    share = get(cfg, "screen.deposit_to_materials_share")
+    if not 0 <= share <= 1.0:
+        raise ConfigInvalid(f"screen.deposit_to_materials_share must be in [0, 1]; got {share}.")
     moa = get(cfg, "release.margin_of_advance")
     if not 0 < moa <= 1.0:
         raise ConfigInvalid(f"release.margin_of_advance must be in (0, 1]; got {moa}. "
                             "The bridge is never above the materials cost.")
-    need = max(0.0, materials_cost - deposit_amount * get(cfg, "screen.deposit_to_materials_share"))
+    need = max(0.0, materials_cost - deposit_amount * share)
     limits = {"need": need, "margin_of_advance": moa * materials_cost, "caps.per_bridge": get(cfg, "caps.per_bridge")}
     binding = min(limits, key=limits.get)
     return limits[binding], need, binding
@@ -109,8 +112,11 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
     if amount <= 0 and need > 0:
         full = [k for k, v in headrooms.items() if v <= 0]
         blocks.append(Reason("CAP_REACHED", "No headroom under: " + ", ".join(full or ["caps.per_bridge"])))
-    elif amount < base or binding == "caps.per_bridge":
-        flags.append("AMOUNT_LIMITED_BY_CAP")
+    else:
+        if binding == "caps.per_bridge" or any(amount == v and v < base for v in headrooms.values()):
+            flags.append("AMOUNT_LIMITED_BY_CAP")
+        if job.invoice_amount < base and amount == job.invoice_amount:
+            flags.append("AMOUNT_LIMITED_BY_INVOICE")
 
     if declines:
         return Decision("DECLINE", reasons=declines + blocks, flags=flags)

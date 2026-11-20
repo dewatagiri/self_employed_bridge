@@ -184,9 +184,16 @@ def write_off(b: LiveBridge, cfg: dict, reserve_remaining: Optional[float] = Non
     return _move(b, WRITTEN_OFF, t, loss=loss, allocation=alloc)
 
 
-def should_chase(expected_recovery: float, cost_of_chasing: float, min_expected: float = 0.0) -> bool:
-    """Stop rule: do not chase when expected recovery is below the cost of chasing (or the set floor)."""
-    return expected_recovery >= cost_of_chasing and expected_recovery >= min_expected
+def should_chase(expected_recovery: float, cost_of_chasing: float, cfg: Optional[dict] = None) -> bool:
+    """Stop rule: do not chase when expected recovery is below the cost of chasing.
+
+    With a config, also stop below `collections.min_expected_recovery_to_chase`.
+    """
+    floor = 0.0
+    if cfg is not None:
+        require(cfg, ["collections.min_expected_recovery_to_chase"])
+        floor = get(cfg, "collections.min_expected_recovery_to_chase")
+    return expected_recovery >= cost_of_chasing and expected_recovery >= floor
 
 
 def blocked_borrowers(bridges: list[LiveBridge]) -> set[str]:
