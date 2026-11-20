@@ -44,6 +44,7 @@ class Exposure:
     cohort_live_amount: float = 0.0
     pilot_live_amount: float = 0.0
     live_job_ids: tuple[str, ...] = ()   # needed for the one-live-bridge-per-job rule
+    borrower_blocked: bool = False       # set by collections after a bypass
 
     @classmethod
     def from_dict(cls, d: dict) -> "Exposure":
@@ -84,3 +85,4 @@ class Bridge:
     cost_to_serve: float
     fee_charged: float
     quote_to_supplier_payment_hours: float
+    sponsor_cohort: str = ""

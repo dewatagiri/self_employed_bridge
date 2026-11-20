@@ -69,3 +69,44 @@ DECIDE_REQUIRED = SCREEN_REQUIRED + [
     "borrower.min_trade_months_or_jobs",
     "tenor.two_step_release_over_amount",
 ]
+
+PRICING_REQUIRED = ["pricing.flat_fee_per_bridge", "pricing.guarantee_fee_rate_on_drawn",
+                    "pricing.cost_to_serve_per_bridge"]
+COLLECTIONS_REQUIRED = ["collections.days_past_due_reminder", "collections.days_past_due_notice",
+                        "collections.days_past_due_escalate", "collections.write_off_after_days",
+                        "collections.min_expected_recovery_to_chase"]
+SIMULATE_REQUIRED = ["simulation.n_bridges", "simulation.n_runs", "simulation.seed",
+                     "simulation.amount_distribution", "simulation.outcome_probs",
+                     "simulation.recovery_rate_by_outcome", "tenor.grace_days"] + PRICING_REQUIRED
+
+
+def layer_keys(cfg: dict) -> list[str]:
+    keys = ["layers.first_loss_reserve"]
+    if get(cfg, "layers.guarantor_enabled"):
+        keys += ["layers.guarantor_cover_pct", "layers.guarantor_cap"]
+    return keys
+
+
+def requirements(cfg: dict) -> dict[str, list[str]]:
+    """Which keys each command needs. Gate thresholds and stop lines never block: they report
+    NO_THRESHOLD_SET or stay switched off."""
+    layers = layer_keys(cfg)
+    return {
+        "screen": SCREEN_REQUIRED,
+        "decide": DECIDE_REQUIRED,
+        "pricing": PRICING_REQUIRED,
+        "compliance": ["financier.type"],
+        "waterfall": layers,
+        "collections": COLLECTIONS_REQUIRED + layers,
+        "simulate": SIMULATE_REQUIRED + layers,
+    }
+
+
+def check_config(cfg: dict) -> dict:
+    """{'blocking': {key: [commands]}, 'open': [keys that are null but do not block]}"""
+    blocking: dict[str, list[str]] = {}
+    for cmd, keys in requirements(cfg).items():
+        for k in missing(cfg, keys):
+            blocking.setdefault(k, []).append(cmd)
+    open_ = [k for k in null_keys(cfg) if k not in blocking]
+    return {"blocking": blocking, "open": open_}

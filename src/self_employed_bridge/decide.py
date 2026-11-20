@@ -42,6 +42,8 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
         blocks.append(Reason("NO_PDPA_CONSENT", "No PDPA consent."))
     if not job.supplier_on_panel:
         blocks.append(Reason("SUPPLIER_NOT_ON_PANEL", "Supplier is not on the approved panel."))
+    if exposure.borrower_blocked:
+        blocks.append(Reason("BORROWER_BLOCKED", "New bridges are blocked for this borrower after a bypass."))
     if job.job_id in exposure.live_job_ids:
         declines.append(Reason("DUPLICATE_JOB", "A live bridge already exists for this job_id."))
     if exposure.borrower_live_count >= get(cfg, "caps.max_live_bridges_per_borrower"):

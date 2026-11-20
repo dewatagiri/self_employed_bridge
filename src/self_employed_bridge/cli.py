@@ -1,0 +1,159 @@
+"""Command line. All I/O lives here; the modules it calls are pure.
+
+    bridge screen    job.json --config params.yaml
+    bridge decide    job.json --config params.yaml --exposure exposure.json
+    bridge waterfall --loss 10000 --config params.yaml
+    bridge gates     data/sample_log.csv --config params.yaml [--jobs data/sample_jobs.csv] --out gates.html
+    bridge check-config params.yaml
+
+Exit codes: 0 ok, 1 check-config found blocking nulls, 2 config incomplete or bad input.
+"""
+from __future__ import annotations
+
+import argparse
+import dataclasses
+import json
+import sys
+from pathlib import Path
+
+from . import compliance, gates, report
+from .config import ConfigIncomplete, check_config, get, is_demo, layer_keys, load_config, require
+from .decide import decide
+from .models import Exposure, Job
+from .screen import screen
+from .waterfall import allocate_loss
+
+
+def _load_json(path: str) -> dict:
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _out(args, obj, text: str) -> None:
+    if args.json:
+        print(json.dumps(obj, indent=2, default=lambda o: dataclasses.asdict(o)))
+    else:
+        print(text)
+
+
+def _banner(cfg: dict) -> str:
+    return "DEMO PARAMETERS: made-up values, not findings.\n" if is_demo(cfg) else ""
+
+
+def _decision_text(d) -> str:
+    lines = [f"Route:    {d.route}"]
+    if d.route == "RELEASE":
+        lines += [f"Amount:   RM{d.approved_amount:,.2f}",
+                  f"Payee:    supplier {d.payee} (never the borrower)",
+                  f"Review:   {d.review_level}"]
+        if len(d.tranches) > 1:
+            lines.append(f"Tranches: RM{d.tranches[0]:,.2f} now; RM{d.tranches[1]:,.2f} after stage 1 is confirmed")
+    lines.append("Reasons:")
+    lines += [f"  {r.code:<24} {r.text}" for r in d.reasons]
+    if d.flags:
+        lines.append("Flags:    " + ", ".join(d.flags))
+    return "\n".join(lines)
+
+
+def cmd_screen(args, cfg):
+    d = screen(Job.from_dict(_load_json(args.job)), cfg)
+    _out(args, d, _banner(cfg) + _decision_text(d))
+
+
+def cmd_decide(args, cfg):
+    exposure = Exposure.from_dict(_load_json(args.exposure)) if args.exposure else Exposure()
+    d = decide(Job.from_dict(_load_json(args.job)), exposure, cfg)
+    standing = compliance.controlled_account_flag()
+    _out(args, {"decision": d, "open_items": [standing]},
+         _banner(cfg) + _decision_text(d) + f"\nOpen item: {standing['message']}")
+
+
+def cmd_waterfall(args, cfg):
+    require(cfg, layer_keys(cfg))
+    on = bool(get(cfg, "layers.guarantor_enabled"))
+    r = allocate_loss(args.loss, get(cfg, "layers.first_loss_reserve"), get(cfg, "layers.guarantor_cover_pct") or 0.0,
+                      get(cfg, "layers.guarantor_cap") or 0.0, on)
+    text = (f"Loss RM{args.loss:,.2f} (guarantor {'on' if on else 'off'})\n"
+            f"  1 first-loss reserve  RM{r['first_loss']:>12,.2f}\n"
+            f"  2 guarantor           RM{r['guarantor']:>12,.2f}\n"
+            f"  3 financier           RM{r['financier']:>12,.2f}")
+    _out(args, r, _banner(cfg) + text)
+
+
+def cmd_gates(args, cfg):
+    rows, synthetic = gates.read_log(args.log)
+    jobs = gates.read_jobs(args.jobs)[0] if args.jobs else None
+    res = gates.score_by_cohort(rows, cfg, jobs)
+    lines = [_banner(cfg) + ("SYNTHETIC DATA\n" if synthetic else "") + f"{'Gate':<16}{'Value':>10}  Status"]
+    for gr in res["overall"]["gates"]:
+        v = "—" if gr.value is None else f"{gr.value:.3f}"
+        lines.append(f"{gr.gate} {gr.name:<14}{v:>10}  {gr.status}")
+    for c, (ok, why) in res["next_cohort"].items():
+        lines.append(f"Cohort {c} may start: {'yes' if ok else 'no'}. {why}")
+    if args.out:
+        Path(args.out).write_text(report.render_gates(res, args.config, is_demo(cfg), synthetic, args.log),
+                                  encoding="utf-8")
+        lines.append(f"Wrote {args.out}")
+    _out(args, res, "\n".join(lines))
+
+
+def cmd_check_config(args):
+    cfg = load_config(args.path)
+    r = check_config(cfg)
+    lines = [_banner(cfg).rstrip()] if is_demo(cfg) else []
+    if r["blocking"]:
+        lines.append(f"{len(r['blocking'])} null parameter(s) block live use:")
+        lines += [f"  {k:<46} blocks: {', '.join(cmds)}" for k, cmds in r["blocking"].items()]
+    else:
+        lines.append("No null parameter blocks live use.")
+    if r["open"]:
+        lines.append(f"{len(r['open'])} open setting(s), null but not blocking:")
+        lines.append("  (gate thresholds report NO_THRESHOLD_SET; stop lines stay off; guarantor keys unused while it is off)")
+        lines += [f"  {k}" for k in r["open"]]
+    _out(args, r, "\n".join(lines))
+    return 1 if r["blocking"] else 0
+
+
+def build_parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(prog="bridge", description="Job-linked bridge engine. Sensitivity tool, not a forecast.")
+    sub = p.add_subparsers(dest="cmd", required=True)
+
+    def add(name, fn, help_):
+        sp = sub.add_parser(name, help=help_)
+        sp.add_argument("--json", action="store_true", help="machine-readable output")
+        sp.set_defaults(fn=fn)
+        return sp
+
+    sp = add("screen", cmd_screen, "run the four screening questions")
+    sp.add_argument("job"); sp.add_argument("--config", required=True)
+    sp = add("decide", cmd_decide, "release decision for a job")
+    sp.add_argument("job"); sp.add_argument("--config", required=True); sp.add_argument("--exposure")
+    sp = add("waterfall", cmd_waterfall, "allocate one loss through the layers")
+    sp.add_argument("--loss", type=float, required=True); sp.add_argument("--config", required=True)
+    sp = add("gates", cmd_gates, "score the pilot gates from a bridge log")
+    sp.add_argument("log"); sp.add_argument("--config", required=True)
+    sp.add_argument("--jobs", help="jobs CSV for gate 0"); sp.add_argument("--out", help="write an HTML report")
+    sp = add("check-config", None, "list every null that blocks live use")
+    sp.add_argument("path")
+    return p
+
+
+def main(argv=None) -> int:
+    args = build_parser().parse_args(argv)
+    try:
+        if args.cmd == "check-config":
+            return cmd_check_config(args)
+        args.fn(args, load_config(args.config))
+        return 0
+    except ConfigIncomplete as e:
+        print("Config incomplete. Set these before live use:", file=sys.stderr)
+        for k in e.keys:
+            print(f"  {k}", file=sys.stderr)
+        return 2
+    except (OSError, ValueError, KeyError, TypeError) as e:
+        print(f"Bad input: {e}", file=sys.stderr)
+        return 2
+
+
+if __name__ == "__main__":
+    sys.exit(main())

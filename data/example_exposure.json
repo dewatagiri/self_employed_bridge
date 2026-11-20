@@ -1,0 +1,5 @@
+{
+  "_note": "SYNTHETIC example exposure snapshot before the decision.",
+  "borrower_live_amount": 0, "borrower_live_count": 0, "supplier_live_amount": 12000,
+  "cohort_live_amount": 40000, "pilot_live_amount": 40000, "live_job_ids": [], "borrower_blocked": false
+}
