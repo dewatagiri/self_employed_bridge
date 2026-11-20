@@ -50,6 +50,7 @@ pricing:
 layers:
   first_loss_reserve: 10000             # DEMO ONLY, not a finding
   unused_reserve_returned: true         # author decision A16: what the cohort does not spend goes back to the sponsor once its loans are closed and recoveries are in
+  reserve_funded_by_guarantor_pct: 0.5   # DEMO ONLY, not a finding
   guarantor_enabled: true               # DEMO ONLY, not a finding
   guarantor_cover_pct: 0.5              # DEMO ONLY, not a finding
   guarantor_cap: 5000                   # DEMO ONLY, not a finding
@@ -59,8 +60,6 @@ financier:
   cost_of_funds_pa: 0.04   # DEMO ONLY, not a finding
   capital_pct_of_drawn: 0.08   # DEMO ONLY, not a finding
   cost_of_equity_pa: 0.12   # DEMO ONLY, not a finding
-sponsor:                               # who funds the first-loss reserve (author decision A16)
-  cost_of_funds_pa: 0.04   # DEMO ONLY, not a finding
 guarantor:                              # the guarantee provider's own costs (author decision A15)
   cost_of_capital_pa: 0.10   # DEMO ONLY, not a finding
   admin_cost_per_bridge: 2   # DEMO ONLY, not a finding

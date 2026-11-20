@@ -106,40 +106,86 @@ def test_grid_matches_base(demo):
     assert g["cells"][key]["guarantor"]["return_on_capital_pa"] == pytest.approx(base["guarantor"]["return_on_capital_pa"])
 
 
-# ---- the sponsor's reserve (A16) ----
+# ---- the reserve, funded by the DFI and the guarantor (A16, A17) ----
 
-def test_sponsor_cost_is_spent_plus_holding(world):
+def test_reserve_funding_split_and_hold(world):
     demo, o = world
-    s = rr.sponsor_view(o["runs"], demo)
-    hold = (90 + 120) / 365
-    assert s["holding_cost"] == pytest.approx(0.04 * 10000 * hold) and s["hold_days"] == pytest.approx(210)
-    assert s["net_cost"] == pytest.approx(s["expected_used"] + s["holding_cost"])
-    assert s["expected_used"] + s["expected_unused"] == pytest.approx(10000)
-    assert s["returned"] == pytest.approx(s["expected_unused"]) and s["is_returned"]
+    rf = rr.reserve_funding(o["runs"], demo)
+    assert rf["committed"] == 10000 and rf["guarantor_share"] == 0.5 and rf["dfi_share"] == 0.5
+    assert rf["hold_days"] == pytest.approx(90 + 120)                         # cohort days + write-off period
+    assert rf["expected_used"] + rf["expected_unused"] == pytest.approx(10000)
 
 
-def test_forfeited_reserve_costs_the_whole_amount(world):
+def test_each_party_pays_its_share_of_the_reserve(world):
+    demo, o = world
+    demo["layers"]["reserve_funded_by_guarantor_pct"] = 0.3
+    x = rr.risk_return(o["runs"], demo, 0.18, 0.035, 25.0)
+    d, g, rf = x["dfi"], x["guarantor"], x["reserve"]
+    used = rf["expected_used"]
+    assert d["ar_result"] == pytest.approx(d["result"] - 0.7 * used)
+    assert g["ar_result"] == pytest.approx(g["result"] - 0.3 * used)
+    assert x["joint_result"] == pytest.approx(d["ar_result"] + g["ar_result"])
+    assert d["ar_committed"] + g["ar_committed"] == pytest.approx(10000)
+    # return on capital counts the money each party tied up in the reserve, at its own hurdle
+    eq_years = d["capital"] * 90 / 365
+    tied = 0.7 * 10000 * rf["hold_years"]
+    assert d["ar_return_on_capital_pa"] == pytest.approx(d["ar_result"] / (eq_years + tied))
+    assert d["ar_economic_profit"] == pytest.approx(d["ar_result"] - 0.12 * (eq_years + tied))
+    assert g["ar_economic_profit"] == pytest.approx(g["ar_result"] - 0.10 * (5000 * 90 / 365 + 0.3 * 10000 * rf["hold_years"]))
+
+
+def test_the_two_parties_carry_all_the_loss(world):
+    """With no outside sponsor the reserve, the guarantor and the DFI together take the whole credit loss."""
+    demo, o = world
+    x = rr.risk_return(o["runs"], demo, 0.18, 0.035, 25.0)
+    assert set(x["loss_split"]) == {"reserve", "guarantor", "dfi"} and sum(x["loss_split"].values()) == pytest.approx(1.0)
+
+
+def test_forfeited_reserve_costs_each_party_its_whole_share(world):
     demo, o = world
     demo["layers"]["unused_reserve_returned"] = False
-    s = rr.sponsor_view(o["runs"], demo)
-    assert s["returned"] == 0 and s["net_cost"] == pytest.approx(10000 + s["holding_cost"])
+    x = rr.risk_return(o["runs"], demo, 0.18, 0.035, 25.0)
+    assert x["dfi"]["ar_spent"] == pytest.approx(0.5 * 10000) and x["guarantor"]["ar_spent"] == pytest.approx(0.5 * 10000)
 
 
-def test_sponsor_view_needs_its_settings(world):
+def test_break_even_after_the_reserve_gives_zero_economic_profit(world):
     demo, o = world
-    demo["sponsor"]["cost_of_funds_pa"] = None
-    assert rr.sponsor_view(o["runs"], demo) is None and rr.reserve_table(demo, o["draws"]) is None
+    x = rr.risk_return(o["runs"], demo, 0.18, 0.035, 25.0)
+    d_be, g_be = x["dfi"]["ar_break_even_fee_pa"], x["guarantor"]["ar_break_even_fee_pa"]
+    y = rr.risk_return(o["runs"], demo, d_be + g_be, g_be, 25.0)
+    assert y["dfi"]["ar_economic_profit"] == pytest.approx(0, abs=1e-6)
+    assert y["guarantor"]["ar_economic_profit"] == pytest.approx(0, abs=1e-6)
+    assert y["gap_after_reserve_pa"] == pytest.approx(0, abs=1e-9)
+    assert x["gap_after_reserve_pa"] > x["gap_pa"]               # funding the reserve only widens the gap
 
 
-def test_reserve_table_trades_sponsor_cost_for_guarantor_return(demo):
+def test_extreme_splits_and_bad_split(world):
+    demo, o = world
+    demo["layers"]["reserve_funded_by_guarantor_pct"] = 0.0
+    x = rr.risk_return(o["runs"], demo, 0.18, 0.035, 25.0)
+    assert x["guarantor"]["ar_committed"] == 0 and x["dfi"]["ar_committed"] == 10000
+    demo["layers"]["reserve_funded_by_guarantor_pct"] = 1.4
+    from self_employed_bridge.config import ConfigInvalid
+    with pytest.raises(ConfigInvalid):
+        rr.risk_return(o["runs"], demo, 0.18, 0.035, 25.0)
+
+
+def test_reserve_settings_missing_hides_it(world):
+    demo, o = world
+    demo["layers"]["reserve_funded_by_guarantor_pct"] = None
+    assert rr.reserve_funding(o["runs"], demo) is None and rr.reserve_table(demo, o["draws"]) is None
+    x = rr.risk_return(o["runs"], demo, 0.18, 0.035, 25.0)
+    assert x["reserve"] is None and "joint_result" not in x and "ar_result" not in x["dfi"]
+
+
+def test_reserve_table_rows(demo):
     demo["simulation"]["n_runs"] = 300
     demo["layers"]["guarantor_cover_pct"] = 0.7
     demo["pricing"]["guarantee_fee_rate_on_drawn"] = 0.035
     out = sim.simulate(demo)
     rows = rr.reserve_table(demo, out["draws"])
     assert [r["reserve"] for r in rows] == demo["sliders"]["first_loss_reserve"]
-    big, small = rows[-1], rows[0]
-    assert big["guarantor_roc"] > small["guarantor_roc"]                          # attaching later helps the guarantor
-    assert big["sponsor"]["p_reserve_out"] <= small["sponsor"]["p_reserve_out"]
-    assert big["sponsor"]["expected_used"] >= small["sponsor"]["expected_used"] - 1e-9   # but the sponsor spends a bit more
-    assert big["sponsor"]["committed"] > small["sponsor"]["committed"]
+    for r in rows:
+        assert r["dfi"]["ar_committed"] + r["guarantor"]["ar_committed"] == pytest.approx(r["reserve"])
+        assert r["joint_result"] == pytest.approx(r["dfi"]["ar_result"] + r["guarantor"]["ar_result"])
+    assert rows[-1]["p_reserve_out"] <= rows[0]["p_reserve_out"]

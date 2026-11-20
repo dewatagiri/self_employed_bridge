@@ -93,7 +93,7 @@ def test_simulate_prints_developmental_lines(capsys, tmp_path):
     cfg = yaml.safe_load(open(DEMO)); cfg["simulation"]["n_runs"] = 100
     small = tmp_path / "s.yaml"; small.write_text(yaml.safe_dump(cfg))
     code, out, _ = run(capsys, "simulate", "--config", str(small))
-    assert code == 0 and "Developmental pricing" in out and "Planned programme cost" in out and "Sponsor reserve used" in out
+    assert code == 0 and "Developmental pricing" in out and "Planned programme cost" in out and "Reserve used" in out
     cfg["pricing"]["all_in_rate_cap_pa"] = None
     small.write_text(yaml.safe_dump(cfg))
     code, out, _ = run(capsys, "simulate", "--config", str(small))

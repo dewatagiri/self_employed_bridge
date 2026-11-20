@@ -94,13 +94,16 @@ Priced below cost on purpose (A13). The engine reports the cost and measures wha
    break-even fees (economic profit 0) added = all-in rate that covers every cost ─▶ gap to the cap
 ```
 
-### The sponsor's reserve
+### The reserve: the DFI and the guarantor are the sponsors
 
 ```
- sponsor ─ funds up front, ring-fenced ─▶ RESERVE ─▶ first losses of the cohort
-                                             │
-        cohort closed + recoveries in ───────┴─▶ unused part returned to the sponsor
- sponsor's net cost = what was spent + cost of the money tied up (cohort days + write-off period)
+ DFI ───────┐  fund up front, ring-fenced        ┌─▶ first losses of the cohort
+            ├────────────▶ RESERVE ──────────────┤
+ guarantor ─┘  (split: layers.reserve_funded_     └─▶ unused part returned to each, once loans are closed
+                          by_guarantor_pct)             and recoveries are in
+ each party's result AFTER funding = its result − its share of what the reserve spends,
+ with its tied-up money (cohort days + write-off period) charged at its own hurdle
+ JOINT RESULT = what the two lose or earn together = the real cost of the programme
 ```
 
 ## Loss trip wire

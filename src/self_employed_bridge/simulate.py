@@ -314,7 +314,7 @@ def slider_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
 #
 # All-in charge to the borrower, per annum, simple interest = financier fee + guarantee fee <= all_in_rate_cap_pa.
 # Financier fee = cap - guarantee fee, charged on the drawn amount over the tenor.
-# Funders' budget covers the DFI and guarantor. Programme cost adds the sponsor's reserve that was used.
+# The DFI and the guarantor are the sponsors (A17), so the funders' loss budget covers the whole programme, the reserve used included.
 
 ADDITIONAL_SHARES = (0.25, 0.5, 0.75, 1.0)    # illustration only: what if this share of borrowers were truly additional?
 
@@ -353,7 +353,7 @@ def dev_cell(runs: list[Run], cfg: dict, cap_pa: float, gfee_pa: float, cts: flo
         "programme_cost_per_loan": cost_pg / n,
         "programme_cost_per_1000_lent": cost_pg / released * 1000,
         "p_group_loses": sum(x < 0 for x in both) / len(both),
-        "p_over_budget": None if budget is None else sum(-x > budget for x in both) / len(both),  # DFI + guarantor only
+        "p_over_budget": None if budget is None else sum(-x > budget for x in prog) / len(prog),  # the whole programme: the reserve is theirs too
         "breakeven_cost_to_serve": None,
     }
     # cost to serve at which the financier alone just breaks even, from the same runs

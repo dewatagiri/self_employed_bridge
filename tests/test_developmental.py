@@ -104,3 +104,15 @@ def test_programme_cost_matches_the_whole_loss_picture(out):
     mean = lambda xs: sum(xs) / len(xs)
     direct = mean([0.18 * r.released * tenor / 365 - 25.0 * r.n_released - r.total_loss for r in runs])
     assert c["programme_net_mean"] == pytest.approx(direct)
+
+
+def test_loss_budget_covers_the_whole_programme(out):
+    """The DFI and the guarantor are the sponsors, so the reserve is their money and counts toward the budget."""
+    demo, o = out
+    runs = o["runs"]
+    prog = [(0.18 - 0.035) * r.released * 30 / 365 - 25.0 * r.n_released - r.financier_loss
+            + (0.035 * r.released * 30 / 365 - r.guarantor) - r.first_loss for r in runs]
+    budget = 3000.0
+    c = sim.dev_cell(runs, demo, 0.18, 0.035, 25.0, budget)
+    assert c["p_over_budget"] == pytest.approx(sum(-x > budget for x in prog) / len(prog))
+    assert c["programme_net_mean"] == pytest.approx(sum(prog) / len(prog))

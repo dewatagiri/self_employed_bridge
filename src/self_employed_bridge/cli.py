@@ -132,7 +132,7 @@ def cmd_simulate(args, cfg):
                   f"(guarantee fee RM{dev['guarantee_fee_per_loan']:,.1f}, financier fee RM{dev['financier_fee_per_loan']:,.1f})",
                   f"  Financier net RM{dev['financier_net_mean']:,.0f} per group = {dev['financier_return_pa']:.1%} a year on drawn, before funding cost",
                   f"  Guarantor net RM{dev['guarantor_net_mean']:,.0f} per group = {dev['guarantor_return_pa']:.1%} a year on drawn",
-                  f"  Sponsor reserve used RM{dev['sponsor_reserve_used_mean']:,.0f} per group",
+                  f"  Reserve used RM{dev['sponsor_reserve_used_mean']:,.0f} per group (DFI + guarantor money)",
                   f"  Planned programme cost (all funders) RM{dev['programme_cost_per_loan']:,.2f} per loan, "
                   f"RM{dev['programme_cost_per_1000_lent']:,.2f} per RM1,000 lent"]
     rrb = riskreturn.rr_base(cfg, out["draws"])
@@ -144,11 +144,14 @@ def cmd_simulate(args, cfg):
         if g:
             lines.append(f"  Guarantor  return on capital {g['return_on_capital_pa']:.1%} vs hurdle {g['hurdle']:.0%} (spread {g['spread']:+.1%}); "
                          f"loss-making groups {g['p_loss']:.0%}; worst-5% average RM{g['es5']:,.0f}")
-        sv = riskreturn.sponsor_view([simulate.run_cohort(d, cfg) for d in out["draws"]], cfg)   # None while its settings are missing
-        if sv:
-            lines.append(f"  Sponsor    reserve RM{sv['committed']:,.0f} funded up front; expected spent RM{sv['expected_used']:,.0f}, "
-                         f"{'returned' if sv['is_returned'] else 'forfeited'} RM{sv['expected_unused']:,.0f}; net cost RM{sv['net_cost']:,.0f} per group "
-                         f"(RM{sv['net_cost_per_1000_lent']:,.2f} per RM1,000 lent)")
+        rf = rrb["reserve"]
+        if rf:
+            lines.append(f"  Reserve    RM{rf['committed']:,.0f} funded up front by the DFI ({rf['dfi_share']:.0%}) and the guarantor ({rf['guarantor_share']:.0%}); "
+                         f"expected spent RM{rf['expected_used']:,.0f}, {'returned' if rf['is_returned'] else 'forfeited'} RM{rf['expected_unused']:,.0f}")
+            lines.append(f"  After funding the reserve: DFI return on capital {rrb['dfi']['ar_return_on_capital_pa']:.1%}, "
+                         + (f"guarantor {rrb['guarantor']['ar_return_on_capital_pa']:.1%}, " if rrb['guarantor'] else "")
+                         + f"joint result RM{rrb['joint_result']:,.0f} per group; "
+                         f"all-in rate covering every cost {rrb['cost_covering_all_in_after_reserve_pa']:.1%} vs cap {rrb['all_in_cap_pa']:.1%}")
         lines.append(f"  Cost-covering all-in rate {rrb['cost_covering_all_in_pa']:.1%} a year vs cap {rrb['all_in_cap_pa']:.1%}: "
                      f"gap {rrb['gap_pa']:+.1%} = RM{rrb['gap_per_loan']:,.2f} per loan")
     if args.out:

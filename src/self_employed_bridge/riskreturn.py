@@ -16,8 +16,9 @@ profit (result less the capital charge), and risk (bad group, chance of a loss-m
 5% of groups). Break-even rates are the fees at which economic profit is exactly zero. Their sum is the all-in rate
 that would cover every cost; the gap to the cap is what developmental pricing deliberately gives up.
 
-Not included: the sponsor's reserve use, which is shown for context only; tax; the DFI's cost to serve is borne by
-the DFI. Nothing here is a forecast.
+The reserve (author decisions A16, A17): the DFI and the guarantor are the sponsors. They fund the first-loss reserve between them,
+up front, and what is not spent goes back. Each party's result is also shown *after funding its share*, with the money tied up
+charged at that party's own hurdle. Not included: tax. The DFI bears the cost to serve. Nothing here is a forecast.
 """
 from __future__ import annotations
 
@@ -26,7 +27,7 @@ import math
 import statistics
 from typing import Optional
 
-from .config import get, require
+from .config import ConfigInvalid, get, require
 from .simulate import Draw, Run, pct, run_cohort
 
 COST_KEYS = ["financier.cost_of_funds_pa", "financier.capital_pct_of_drawn", "financier.cost_of_equity_pa",
@@ -91,14 +92,40 @@ def risk_return(runs: list[Run], cfg: dict, cap_pa: float, gfee_pa: float, cts: 
                 "cap_used": m(g_draw) / gcap} | risk_stats(g_op)
         guar["spread"] = guar["return_on_capital_pa"] - gcoc
 
-    # Sponsor, for context, and who takes the credit loss
+    # The reserve: the DFI and the guarantor fund it between them (A17)
+    rf = reserve_funding(runs, cfg)
+    be_after = dfi_be_after = g_be_after = None
+    if rf:
+        for who, party, hurdle, base_years in (("dfi", dfi, coe, d_eq_years), ("guarantor", guar, gcoc, cap_years)):
+            if party is None:
+                continue
+            share = rf[f"{who}_share"]
+            lost_unused = 0.0 if rf["is_returned"] else share * rf["expected_unused"]
+            tied = share * rf["committed"] * rf["hold_years"]                  # RM-years of this party's money held in the reserve
+            after = party["result"] - share * rf["expected_used"] - lost_unused
+            party.update({"ar_committed": share * rf["committed"], "ar_spent": share * rf["expected_used"] + lost_unused,
+                          "ar_result": after, "ar_return_on_capital_pa": after / (base_years + tied),
+                          "ar_economic_profit": after - hurdle * (base_years + tied)})
+            party["ar_spread"] = party["ar_return_on_capital_pa"] - hurdle
+            party["ar_break_even_fee_pa"] = party["break_even_fee_pa"] + (share * rf["expected_used"] + lost_unused + hurdle * tied) / ey
+        dfi_be_after = dfi["ar_break_even_fee_pa"]
+        g_be_after = guar["ar_break_even_fee_pa"] if guar else 0.0
+        be_after = dfi_be_after + g_be_after
+
+    # Who takes the credit loss
     total = m([r.total_loss for r in runs]) or 1e-9
-    split = {"sponsor": m([r.first_loss for r in runs]) / total, "guarantor": m(g_draw) / total, "dfi": m(d_loss) / total}
+    split = {"reserve": m([r.first_loss for r in runs]) / total, "guarantor": m(g_draw) / total, "dfi": m(d_loss) / total}
     be = dfi["break_even_fee_pa"] + (guar["break_even_fee_pa"] if guar else 0.0)
-    return {"dfi": dfi, "guarantor": guar, "loss_split": split, "sponsor_reserve_used": m([r.first_loss for r in runs]),
-            "sponsor_p_reserve_out": sum(r.reserve_exhausted for r in runs) / len(runs),
-            "cost_covering_all_in_pa": be, "all_in_cap_pa": cap_pa, "gap_pa": be - cap_pa,
-            "gap_per_loan": (be - cap_pa) * ey / nm, "avg_loan": m([r.released for r in runs]) / nm}
+    out = {"dfi": dfi, "guarantor": guar, "loss_split": split, "reserve": rf,
+           "reserve_used": m([r.first_loss for r in runs]), "p_reserve_out": sum(r.reserve_exhausted for r in runs) / len(runs),
+           "cost_covering_all_in_pa": be, "all_in_cap_pa": cap_pa, "gap_pa": be - cap_pa,
+           "gap_per_loan": (be - cap_pa) * ey / nm, "avg_loan": m([r.released for r in runs]) / nm}
+    if rf:
+        out["joint_result"] = dfi["ar_result"] + (guar["ar_result"] if guar else 0.0)
+        out["cost_covering_all_in_after_reserve_pa"] = be_after
+        out["gap_after_reserve_pa"] = be_after - cap_pa
+        out["gap_after_reserve_per_loan"] = (be_after - cap_pa) * ey / nm
+    return out
 
 
 def rr_base(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
@@ -129,42 +156,41 @@ def rr_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
     return {"axes": sl, "cells": cells}
 
 
-# ---------- the sponsor's reserve (author decision A16) ----------
+# ---------- the reserve, funded by the DFI and the guarantor (author decisions A16, A17) ----------
 #
-# The sponsor funds a first-loss reserve per cohort, up front, into a ring-fenced account. Losses use it first. What the cohort
-# does not spend goes back to the sponsor once the cohort's loans are closed and recoveries are in (`layers.unused_reserve_returned`).
-# The sponsor's real cost is therefore what is spent plus the cost of having the money tied up for the cohort's life
-# (cohort days + the write-off period). If unused reserve were forfeited instead, the cost would be the whole reserve.
+# There is no outside sponsor. The DFI and the guarantor fund the first-loss reserve between them, up front, into a ring-fenced
+# account; `layers.reserve_funded_by_guarantor_pct` is the guarantor's share and the DFI funds the rest. Losses use the reserve
+# first. What the cohort does not spend goes back to the two of them once its loans are closed and recoveries are in
+# (`layers.unused_reserve_returned`). Each party's cost is its share of what is spent plus the cost of its money tied up for the
+# hold period (cohort days + the write-off period), at that party's own required return. If unused reserve were forfeited, each
+# party would lose its share of that too.
 
-SPONSOR_KEYS = ["sponsor.cost_of_funds_pa", "simulation.cohort_days", "collections.write_off_after_days", "layers.first_loss_reserve"]
+RESERVE_KEYS = ["layers.first_loss_reserve", "layers.reserve_funded_by_guarantor_pct", "simulation.cohort_days",
+                "collections.write_off_after_days"]
 
 
-def sponsor_view(runs: list[Run], cfg: dict) -> Optional[dict]:
-    """The sponsor's cost for one reserve size, or None while its settings are missing."""
-    if any(get(cfg, k) is None for k in SPONSOR_KEYS):
+def reserve_funding(runs: list[Run], cfg: dict) -> Optional[dict]:
+    """The reserve for one size and split, or None while its settings are missing."""
+    if any(get(cfg, k) is None for k in RESERVE_KEYS):
         return None
     reserve = get(cfg, "layers.first_loss_reserve")
-    returned = bool(get(cfg, "layers.unused_reserve_returned"))
+    gs = get(cfg, "layers.reserve_funded_by_guarantor_pct")
+    if not 0 <= gs <= 1:
+        raise ConfigInvalid(f"layers.reserve_funded_by_guarantor_pct must be between 0 and 1; got {gs}.")
     hold_years = (get(cfg, "simulation.cohort_days") + get(cfg, "collections.write_off_after_days")) / 365
-    holding = get(cfg, "sponsor.cost_of_funds_pa") * reserve * hold_years
     used = [min(r.first_loss, reserve) for r in runs]
-    unused = [reserve - u for u in used]
-    net = [u + holding + (0.0 if returned else x) for u, x in zip(used, unused)]
     m = statistics.fmean
-    n, lent = m([r.n_released for r in runs]) or 1.0, m([r.released for r in runs]) or 1.0
-    return {"committed": reserve, "expected_used": m(used), "expected_unused": m(unused),
-            "returned": m(unused) if returned else 0.0, "holding_cost": holding, "hold_days": hold_years * 365,
-            "net_cost": m(net), "net_cost_per_loan": m(net) / n, "net_cost_per_1000_lent": m(net) / lent * 1000,
-            "p_reserve_out": sum(r.reserve_exhausted for r in runs) / len(runs), "is_returned": returned,
-            "worst_5pct_used": pct(used, 95)}
+    return {"committed": reserve, "guarantor_share": gs, "dfi_share": 1 - gs, "hold_years": hold_years, "hold_days": hold_years * 365,
+            "expected_used": m(used), "expected_unused": reserve - m(used), "is_returned": bool(get(cfg, "layers.unused_reserve_returned")),
+            "p_reserve_out": sum(r.reserve_exhausted for r in runs) / len(runs), "worst_5pct_used": pct(used, 95)}
 
 
 def reserve_table(cfg: dict, draws: list[list[Draw]]) -> Optional[list[dict]]:
-    """One row per reserve size in `sliders.first_loss_reserve`: what it costs the sponsor and what it does for the guarantor
-    and the DFI, at the config's own cover, guarantee fee, all-in cap and cost to serve."""
+    """One row per reserve size in `sliders.first_loss_reserve`: what it costs the DFI and the guarantor, and what it does for
+    each, at the config's own cover, split, guarantee fee, all-in cap and cost to serve."""
     sizes = get(cfg, "sliders.first_loss_reserve")
     cap = get(cfg, "pricing.all_in_rate_cap_pa")
-    if not sizes or cap is None or any(get(cfg, k) is None for k in COST_KEYS + SPONSOR_KEYS):
+    if not sizes or cap is None or any(get(cfg, k) is None for k in COST_KEYS + RESERVE_KEYS):
         return None
     require(cfg, ["pricing.guarantee_fee_rate_on_drawn", "pricing.cost_to_serve_per_bridge"])
     rows = []
@@ -173,9 +199,10 @@ def reserve_table(cfg: dict, draws: list[list[Draw]]) -> Optional[list[dict]]:
         c["layers"]["first_loss_reserve"] = size
         runs = [run_cohort(d, c) for d in draws]
         x = risk_return(runs, c, cap, get(c, "pricing.guarantee_fee_rate_on_drawn"), get(c, "pricing.cost_to_serve_per_bridge"))
-        if x is None:
+        if x is None or x["reserve"] is None:
             continue
-        rows.append({"reserve": size, "sponsor": sponsor_view(runs, c), "dfi": x["dfi"], "guarantor": x["guarantor"],
-                     "dfi_roc": x["dfi"]["return_on_capital_pa"],
-                     "guarantor_roc": x["guarantor"]["return_on_capital_pa"] if x["guarantor"] else None})
+        rows.append({"reserve": size, "funding": x["reserve"], "dfi": x["dfi"], "guarantor": x["guarantor"],
+                     "joint_result": x["joint_result"], "dfi_roc": x["dfi"]["ar_return_on_capital_pa"],
+                     "guarantor_roc": x["guarantor"]["ar_return_on_capital_pa"] if x["guarantor"] else None,
+                     "p_reserve_out": x["reserve"]["p_reserve_out"]})
     return rows

@@ -225,13 +225,13 @@ and risk: a bad group, the average of the worst 5% of groups, and the chance of 
 **break-even fee**, the all-in rate that covers every cost, and the gap to the borrower's cap. All costs are settings:
 placeholders in the demo, empty in the real template.
 
-### The sponsor's reserve
+### The reserve: the DFI and the guarantor are the sponsors
 
-The first-loss reserve is **sponsor money, funded up front into a ring-fenced account** (a promise is not enough: the
-guarantor's cover sits on top of it). Losses use it first. What the cohort does not spend **goes back to the sponsor** once
-its loans are closed and recoveries are in (decision A16), so the sponsor's cost is what is spent plus the cost of having the
-money tied up. The report shows that cost for each reserve size next to what it does for the guarantor and the DFI: a reserve
-set above the expected loss lets the guarantor earn its required return, which a reserve sitting at the expected loss does not.
+There is no outside funder (decision A17). The DFI and the guarantor **fund the first-loss reserve between them, up front, into a
+ring-fenced account** (a promise is not enough: the guarantor's cover sits on top of it), and every rand of credit loss lands on the
+two of them. What the cohort does not spend goes back (A16). The report shows each party's result **after funding its share**,
+with its money tied up charged at its own required return, a table of what each reserve size costs and does for each, and the
+**joint result**: what the two of them lose or earn together.
 
 ## Loss trip wire
 
@@ -263,7 +263,7 @@ a share of the money lent on loans with a known outcome, **new loans and top-ups
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 201 tests (`pytest`).
+(open in a browser) · 206 tests (`pytest`).
 
 ## Licence
 
