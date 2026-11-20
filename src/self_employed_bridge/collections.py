@@ -58,6 +58,7 @@ class LiveBridge:
     tasks: tuple[Task, ...] = ()
     loss: Optional[float] = None
     allocation: Optional[dict] = None
+    cured: bool = False                  # bypass repaid in full and approved by a named officer
 
     def __post_init__(self):
         if self.outstanding < 0:
@@ -196,9 +197,30 @@ def should_chase(expected_recovery: float, cost_of_chasing: float, cfg: Optional
     return expected_recovery >= cost_of_chasing and expected_recovery >= floor
 
 
+def approve_cure(b: LiveBridge) -> tuple[LiveBridge, list[Task]]:
+    """Lift a bypass block (author decision A7): only after the bypassed amount is repaid in full
+    into the controlled account (the bridge closed as PAID_LATE) and a named officer approves.
+    Calling this function is that approval."""
+    if b.cause != "bypass" or b.state != PAID_LATE:
+        raise InvalidTransition("a cure needs a bypass bridge repaid in full")
+    t = [_task(b, "LIFT_BLOCK", "credit officer", f"Bypass repaid in full: lift the block on borrower {b.borrower_id}.")]
+    return replace(b, cured=True, tasks=b.tasks + tuple(t)), t
+
+
 def blocked_borrowers(bridges: list[LiveBridge]) -> set[str]:
-    """Borrowers with any bypass. The block stays for the pilot; lifting it is a credit decision."""
-    return {b.borrower_id for b in bridges if b.cause == "bypass"}
+    """Borrowers blocked from new bridges (author decision A7).
+
+    One bypass blocks until it is cured (`approve_cure`). A second bypass blocks for the rest of
+    the pilot, cured or not.
+    """
+    counts: dict[str, int] = {}
+    uncured: set[str] = set()
+    for b in bridges:
+        if b.cause == "bypass":
+            counts[b.borrower_id] = counts.get(b.borrower_id, 0) + 1
+            if not b.cured:
+                uncured.add(b.borrower_id)
+    return uncured | {who for who, n in counts.items() if n >= 2}
 
 
 CLAIM_ITEMS = [

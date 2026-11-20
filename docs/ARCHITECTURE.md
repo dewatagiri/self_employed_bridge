@@ -34,7 +34,7 @@
 ┌──────────────────────────────────────────────────────────────────┐
 │ collections.py   LIVE ─▶ PAID_ON_TIME                            │
 │                  LIVE ─▶ LATE ─(reminder, notice, escalate)─┐    │
-│                  LIVE ─▶ BYPASS (hold, block borrower) ─────┤    │
+│                  LIVE ─▶ BYPASS (hold, block; cure or 2 = out)┤    │
 │                  LIVE ─▶ DISPUTE (hold part, mediate) ──────┤    │
 │                  LIVE ─▶ ABANDONED (supplier take-back) ────┤    │
 │                                                  RECOVERY ◀─┘    │

@@ -13,6 +13,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A4 | 20 Nov 2026 | The borrower pays the guarantee fee on drawn amounts, on top of the flat fee; it passes to the guarantor. | Confirms D25 option one. Break-even flat fee = cost to serve + expected financier loss. The alternative figure is removed from the report. |
 | A5 | 20 Nov 2026 | A variation order signed by the payer can release more on the same bridge (as the article says). | Replaces D2. At release, a signed variation raises the materials cost to the varied total. On a live bridge, `decide_variation` (CLI: `decide --top-up-after RM`) releases the difference, within margin of advance and every cap, to the supplier, always with manual review. Unsigned: extra blocked. |
 | A6 | 20 Nov 2026 | An invoice that does not match the trade template goes to a named officer, not a block. | Confirms D3. |
+| A7 | 20 Nov 2026 | Bypass cure path: the block lifts only after the bypassed amount is repaid in full into the controlled account and a named officer approves. A second bypass blocks for the rest of the pilot. | Replaces D12. `collections.approve_cure`; `blocked_borrowers` applies both rules. |
 
 ## Interpretations made in the build
 
@@ -29,7 +30,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | D9 | `pricing.py` | `breakeven_fee` = cost to serve + guarantee fee + expected financier loss. | Handover §6.4 as written. |
 | D10 | `collections.py` | A bridge paid in full after going late closes as `PAID_LATE`. | The log has a `late` outcome; the spec's state list has no end state for it. |
 | D11 | `collections.py` | Bypass and abandonment go straight to `RECOVERY` after their first-step tasks; a dispute stays in `DISPUTE` until mediation finds the borrower at fault. | Follows the design's collections table. |
-| D12 | `collections.py` | A bypass blocks the borrower for the rest of the pilot (`Exposure.borrower_blocked`). | Lifting the block is a credit decision, not an engine one. |
+| D12 | `collections.py` | ~~A bypass blocks the borrower for the rest of the pilot.~~ | Superseded by A7 (cure path). |
 | D13 | `collections.py` | Write-off takes the cohort's *remaining* reserve and guarantor cap (default: full config values). | Keeps single write-offs consistent with `allocate_pool`. |
 | D14 | `gates.py` | Pass thresholds live in a new `gates.*` block, all null. A gate with several metrics is `FAIL` if any fails, `PASS` only if all pass. | The design leaves stop lines open; the handover asks for thresholds "from config". |
 | D15 | `gates.py` | Gate 0 needs the jobs file (`--jobs`); without it the value is empty. | The log alone has no unbridged quotes. |

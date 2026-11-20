@@ -65,6 +65,30 @@ def test_bypass_blocks_new_bridges(make_job, demo):
     assert d.route == "BLOCKED" and d.reasons[0].code == "BORROWER_BLOCKED"
 
 
+def test_bypass_cure_path():
+    from self_employed_bridge.collections import approve_cure
+    b, _ = bypass(bridge())
+    with pytest.raises(InvalidTransition):
+        approve_cure(b)                                  # not repaid yet
+    b, _ = payment(b, 1000)
+    assert blocked_borrowers([b]) == {"B1"}              # partly repaid: still blocked
+    b, _ = payment(b, 2000)
+    assert b.state == "PAID_LATE" and blocked_borrowers([b]) == {"B1"}   # repaid, not yet approved
+    b, t = approve_cure(b)
+    assert b.cured and t[0].code == "LIFT_BLOCK" and blocked_borrowers([b]) == set()
+
+
+def test_second_bypass_blocks_for_good():
+    from self_employed_bridge.collections import approve_cure
+    first, _ = bypass(bridge())
+    first, _ = payment(first, 3000)
+    first, _ = approve_cure(first)
+    second, _ = bypass(bridge(bridge_id="BR2"))
+    second, _ = payment(second, 3000)
+    second, _ = approve_cure(second)
+    assert blocked_borrowers([first, second]) == {"B1"}
+
+
 def test_dispute_holds_part_and_assigns_job_source():
     b, t = dispute(bridge(), 1200)
     assert b.state == "DISPUTE" and b.held_amount == 1200
