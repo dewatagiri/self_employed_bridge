@@ -7,6 +7,7 @@ name = "self_employed_bridge"
 version = "0.1.0"
 description = "Parametric engine for a job-linked materials bridge. Sensitivity tool, not a forecast."
 requires-python = ">=3.11"
+license = { text = "MIT" }
 dependencies = ["pyyaml"]
 
 [project.scripts]
