@@ -18,6 +18,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A9 | 20 Nov 2026 | Market references stay pending until the author's team has opened each source. | `market_reference.approved_by_author: false`; the report keeps the PENDING label. |
 | A10 | 20 Nov 2026 | Fee ceiling stays at 1.5% a month, resting on two sources: the public scheme charge (author to confirm the product) and the top of the market invoice financing range. | `pricing.fee_ceiling_reference.sources` lists both. Warning only; the fee is never derived from it. |
 | A11 | 20 Nov 2026 | Build both article ideas: (1) business registration required, waived only for a borrower's first bridge at or below a set amount; (2) live-bridge limit and borrower cap step up after clean repayments. | `release.require_registration`, `release.registration_waiver_first_bridge_max` (null = no waiver), `caps.step_up_tiers` (null = no step-up; tiers may only raise limits). Inputs: `Job.borrower_registered`, `Exposure.borrower_prior_bridges`, `Exposure.borrower_clean_repayments`. Null leaves the strict default, so nothing loosens until the financier and risk team set the numbers. |
+| A12 | 20 Nov 2026 | Build a staff page so people can use the engine (option 2 of 3), beyond handover §8's "no front end beyond the HTML report". | `bridge serve`: local page on 127.0.0.1, standard library only, SQLite record (`bridge.db`). Pure `ledger.py` derives exposure, layers left and the gates log from the record. No payments, no contact with anyone. |
 
 ## Interpretations made in the build
 

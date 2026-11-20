@@ -5,6 +5,7 @@
     bridge waterfall --loss 10000 --config params.yaml
     bridge simulate  --config params.demo.yaml --out report.html
     bridge gates     data/sample_log.csv --config params.yaml [--jobs data/sample_jobs.csv] --out gates.html
+    bridge serve     --config params.yaml [--db bridge.db] [--port 8000]
     bridge check-config params.yaml
 
 Exit codes: 0 ok, 1 check-config found blocking nulls, 2 config incomplete or bad input.
@@ -132,6 +133,11 @@ def cmd_simulate(args, cfg):
     _out(args, {"summary": s}, "\n".join(lines))
 
 
+def cmd_serve(args, cfg):
+    from .app import serve
+    serve(cfg, args.config, args.db, args.host, args.port)
+
+
 def cmd_check_config(args):
     cfg = load_config(args.path)
     r = check_config(cfg)
@@ -172,6 +178,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--jobs", help="jobs CSV for gate 0"); sp.add_argument("--out", help="write an HTML report")
     sp = add("simulate", cmd_simulate, "cohort Monte Carlo and sensitivity report")
     sp.add_argument("--config", required=True); sp.add_argument("--out", help="write the HTML report")
+    sp = add("serve", cmd_serve, "staff page on this PC (http://127.0.0.1:8000)")
+    sp.add_argument("--config", required=True); sp.add_argument("--db", default="bridge.db")
+    sp.add_argument("--host", default="127.0.0.1"); sp.add_argument("--port", type=int, default=8000)
     sp = add("check-config", None, "list every null that blocks live use")
     sp.add_argument("path")
     return p

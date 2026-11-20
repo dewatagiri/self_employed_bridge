@@ -16,7 +16,7 @@ a bridge log. **Every limit, rate and threshold is a parameter. Nothing is hard-
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest                                    # 123 tests
+python -m pytest                                    # 141 tests
 
 bridge check-config config/params.template.yaml     # what must be set before live use (exit 1)
 bridge screen  data/example_job.json --config config/params.demo.yaml
@@ -32,6 +32,26 @@ demo parameters and synthetic data.
 
 Add `--json` to any command for machine-readable output. Run any live command against the
 template and it refuses, naming each null it needs (exit 2).
+
+## Staff page (for running a first cohort)
+
+```bash
+bridge serve --config config/params.demo.yaml --db bridge.db
+```
+
+Open <http://127.0.0.1:8000> on the same PC. Staff enter a job and get the engine's decision, record
+the release once the supplier is paid, then run each bridge to its end: payments, days past due
+(reminder, notice, escalation, write-off fire on their days), bypass and cure, dispute, abandonment,
+variation top-ups. The **Pilot gates** page and the CSV log are built from the same record.
+
+- The page only listens on this PC, uses only the Python standard library, and keeps one file
+  (`bridge.db`, SQLite). Back that file up; it is the record.
+- Exposure, reserve left and guarantor cap left are worked out from the record; staff never add them up.
+- Every release is re-checked by the engine when it is recorded. The page contacts nobody: it records
+  what staff did.
+- With the template config it refuses to decide and lists the settings still missing.
+
+On Windows PowerShell, use `py -3.13 -m self_employed_bridge.cli serve --config config/params.demo.yaml`.
 
 ## The worked example
 
@@ -51,6 +71,7 @@ A RM25,000 write-off under the demo layers → reserve RM10,000, guarantor RM5,0
 | Recovery | `collections.py` | state machine, tasks by days past due, write-off, claim file |
 | Gates | `gates.py` | gates 0–3, cohort measures, second-cohort rule |
 | Simulation | `simulate.py` | cohort Monte Carlo, stop line, ±25% sensitivity, slider grid |
+| Staff page | `app.py`, `ledger.py`, `store.py` | local web page over the engine; exposure and log from the record (SQLite) |
 | Output | `report.py`, `cli.py` | offline HTML, command line |
 
 Design and data flow: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).

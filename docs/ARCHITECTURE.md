@@ -66,6 +66,18 @@ live decision uses. The report's sliders look results up in the precomputed grid
 never disagree with the engine. A test checks that the grid cell at the base settings equals the
 full simulation.
 
+## Staff page
+
+```
+ browser (this PC) ──▶ app.py  (http.server, forms, pages)
+                         │  input ─▶ screen / decide / decide_variation / collections / gates
+                         │  record ─▶ store.py (SQLite: jobs, decisions, bridges)
+                         └─ ledger.py (pure): record ─▶ exposure, reserve and cap left, gates log
+```
+
+The page holds no rules. A release is re-decided when it is recorded, so a stale screen cannot
+release money. POSTs from another origin are refused; all output is escaped.
+
 ## Rules the code keeps
 
 - **Pure core.** `screen`, `decide`, `waterfall`, `pricing`, `compliance`, `collections` and the
