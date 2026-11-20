@@ -41,11 +41,11 @@ pricing:
     note: "Not like-for-like. A fee well above it needs a stated reason."
 layers:
   first_loss_reserve: null              # RM, sponsor-funded, per cohort
-  guarantor_enabled: false
+  guarantor_enabled: true               # author decision, 20 Nov 2026: a guarantee provider covers part of the loss
   guarantor_cover_pct: null             # share of loss above the reserve
   guarantor_cap: null                   # RM, programme cap
 financier:
-  type: null                            # bank | development_institution | licensed_moneylender | other
+  type: development_institution          # author decision, 20 Nov 2026 (bank | development_institution | licensed_moneylender | other)
   moneylender_caps: {secured: 0.12, unsecured: 0.18}   # Moneylenders Act 1951, per annum, simple interest (public)
 collections:
   days_past_due_reminder: null

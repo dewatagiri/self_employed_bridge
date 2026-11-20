@@ -3,6 +3,12 @@
 The handover leaves some points to the author. Where the code had to pick, the choice is listed
 here so it can be confirmed or reversed. Nothing below is a finding.
 
+## Author decisions
+
+| # | Date | Decision | Effect in the engine |
+|---|---|---|---|
+| A1 | 20 Nov 2026 | A development financial institution funds the bridges; a guarantee provider guarantees them. | `financier.type: development_institution` (compliance returns `CHECK_REQUIRED` for legal; moneylender caps do not apply). `layers.guarantor_enabled: true`, so guarantor cover and cap must be set before live use. |
+
 ## Interpretations made in the build
 
 | # | Where | Choice | Why / how to change |
@@ -40,7 +46,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 
 1. Bridge need formula (D1) versus a plain cap at materials cost.
 2. Reserve shared across a cohort (assumed) or held per borrower.
-3. Which financier types are in the pilot. `financier.type` is null, so compliance checks stop until it is set.
+3. ~~Which financier types are in the pilot.~~ Decided (A1).
 4. Real thresholds for stop lines and gates, and every null in `params.template.yaml`
    (`bridge check-config` lists them).
 5. Whether the controlled account needs central-bank approval as e-money or a payment service

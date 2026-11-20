@@ -23,7 +23,9 @@ def test_check_config_maps_keys_to_commands(template):
     from self_employed_bridge.config import check_config
     r = check_config(template)
     assert r["blocking"]["screen.min_materials_share_of_quote"] == ["screen", "decide"]
-    assert "layers.guarantor_cap" in r["open"]          # guarantor is off in the template
+    assert "layers.guarantor_cap" in r["blocking"]      # guarantor is on (author decision A1)
+    template["layers"]["guarantor_enabled"] = False
+    assert "layers.guarantor_cap" in check_config(template)["open"]
     template["layers"]["guarantor_enabled"] = True
     assert "layers.guarantor_cap" in check_config(template)["blocking"]
 

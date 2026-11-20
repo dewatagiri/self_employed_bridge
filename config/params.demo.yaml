@@ -44,7 +44,7 @@ layers:
   guarantor_cover_pct: 0.5              # DEMO ONLY, not a finding
   guarantor_cap: 5000                   # DEMO ONLY, not a finding
 financier:
-  type: other                           # DEMO ONLY, not a finding
+  type: development_institution          # author decision, 20 Nov 2026
   moneylender_caps: {secured: 0.12, unsecured: 0.18}
 collections:
   days_past_due_reminder: 3             # DEMO ONLY, not a finding
