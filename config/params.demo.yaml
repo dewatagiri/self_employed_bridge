@@ -1,0 +1,66 @@
+# DEMO PARAMETERS. Every value marked below is made up so the engine can run end to end.
+meta:
+  demo: true                            # DEMO ONLY, not a finding
+screen:
+  allowed_payer_types: [household, individual, small_business]
+  refer_contract_payer_types: [company, agency, glc]
+  min_materials_share_of_quote: 0.25    # DEMO ONLY, not a finding
+  deposit_to_materials_share: 1.0       # DEMO ONLY, not a finding
+release:
+  require_deposit_from_payer_account: true
+  require_payer_not_related: true
+  require_pdpa_consent: true
+  auto_approve_max_amount: 5000         # DEMO ONLY, not a finding
+  template_match_min: 0.8               # DEMO ONLY, not a finding
+caps:
+  per_bridge: 10000                     # DEMO ONLY, not a finding
+  per_borrower_live: 15000              # DEMO ONLY, not a finding
+  per_supplier_live: 50000              # DEMO ONLY, not a finding
+  per_sponsor_cohort: 200000            # DEMO ONLY, not a finding
+  pilot_total: 500000                   # DEMO ONLY, not a finding
+  max_live_bridges_per_borrower: 2      # DEMO ONLY, not a finding
+borrower:
+  require_credit_bureau_check: true
+  decline_on_adverse_record: true
+  min_trade_months_or_jobs: 6           # DEMO ONLY, not a finding
+tenor:
+  grace_days: 7                         # DEMO ONLY, not a finding
+  two_step_release_over_amount: 8000    # DEMO ONLY, not a finding
+pricing:
+  flat_fee_per_bridge: 60               # DEMO ONLY, not a finding
+  guarantee_fee_rate_on_drawn: 0.02     # DEMO ONLY, not a finding
+  cost_to_serve_per_bridge: 25          # DEMO ONLY, not a finding
+  fee_ceiling_reference:
+    rate_per_month: 0.015
+    note: "Not like-for-like. A fee well above it needs a stated reason."
+layers:
+  first_loss_reserve: 10000             # DEMO ONLY, not a finding
+  guarantor_enabled: true               # DEMO ONLY, not a finding
+  guarantor_cover_pct: 0.5              # DEMO ONLY, not a finding
+  guarantor_cap: 5000                   # DEMO ONLY, not a finding
+financier:
+  type: other                           # DEMO ONLY, not a finding
+  moneylender_caps: {secured: 0.12, unsecured: 0.18}
+collections:
+  days_past_due_reminder: 3             # DEMO ONLY, not a finding
+  days_past_due_notice: 14              # DEMO ONLY, not a finding
+  days_past_due_escalate: 30            # DEMO ONLY, not a finding
+  write_off_after_days: 120             # DEMO ONLY, not a finding
+  min_expected_recovery_to_chase: 0     # DEMO ONLY, not a finding
+stop_lines:
+  pause_if_bypass_rate_over: 0.10       # DEMO ONLY, not a finding
+  target_quote_to_supplier_payment_hours: 4   # DEMO ONLY, not a finding
+gates:
+  gate0_min_share: null
+  gate1_min_share: null
+  gate2_min_on_time_share: null
+  gate2_max_bypass_rate: null
+  gate2_max_loss_to_reserve: null
+  gate3_min_fee_cover_ratio: null
+simulation:
+  n_bridges: 100                        # DEMO ONLY, not a finding
+  n_runs: 1000                          # DEMO ONLY, not a finding
+  seed: 42
+  amount_distribution: {kind: lognormal, mean: 7.8, sigma: 0.5}   # DEMO ONLY, not a finding
+  outcome_probs: {on_time: 0.80, late: 0.10, bypass: 0.05, dispute: 0.03, abandoned: 0.02}   # DEMO ONLY, not a finding
+  recovery_rate_by_outcome: {on_time: 1.0, late: 0.95, bypass: 0.5, dispute: 0.7, abandoned: 0.3}   # DEMO ONLY, not a finding

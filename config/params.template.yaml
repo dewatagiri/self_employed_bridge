@@ -1,0 +1,67 @@
+# Production template. Every null must be set (from pilot evidence) before live use.
+# No Malaysian loss data exists: do not fill these from guesses.
+meta:
+  demo: false
+screen:
+  allowed_payer_types: [household, individual, small_business]
+  refer_contract_payer_types: [company, agency, glc]   # go to contract or invoice financing
+  min_materials_share_of_quote: null    # Q2: materials_cost / quote_total must be at least this
+  deposit_to_materials_share: null      # share of the deposit treated as applied to materials
+release:
+  require_deposit_from_payer_account: true
+  require_payer_not_related: true
+  require_pdpa_consent: true
+  auto_approve_max_amount: null         # template jobs at or below this skip manual review
+  template_match_min: null              # 0 to 1 match between quote materials list and trade template
+caps:                                   # exposure limits, all RM
+  per_bridge: null
+  per_borrower_live: null
+  per_supplier_live: null
+  per_sponsor_cohort: null
+  pilot_total: null
+  max_live_bridges_per_borrower: null
+borrower:
+  require_credit_bureau_check: true
+  decline_on_adverse_record: true
+  min_trade_months_or_jobs: null        # met if trade months OR completed jobs reach this
+tenor:
+  grace_days: null
+  two_step_release_over_amount: null    # larger jobs release in two steps (stage 1 = this amount)
+pricing:
+  flat_fee_per_bridge: null             # RM
+  guarantee_fee_rate_on_drawn: null     # annual rate, charged on drawn amount only
+  cost_to_serve_per_bridge: null        # RM, measured in the pilot
+  fee_ceiling_reference:                # published benchmark, used only as a warning
+    rate_per_month: 0.015               # contract financing, 1.5% a month (public, Oct 2026)
+    note: "Not like-for-like. A fee well above it needs a stated reason."
+layers:
+  first_loss_reserve: null              # RM, sponsor-funded, per cohort
+  guarantor_enabled: false
+  guarantor_cover_pct: null             # share of loss above the reserve
+  guarantor_cap: null                   # RM, programme cap
+financier:
+  type: null                            # bank | development_institution | licensed_moneylender | other
+  moneylender_caps: {secured: 0.12, unsecured: 0.18}   # Moneylenders Act 1951, per annum, simple interest (public)
+collections:
+  days_past_due_reminder: null
+  days_past_due_notice: null
+  days_past_due_escalate: null
+  write_off_after_days: null
+  min_expected_recovery_to_chase: null  # stop chasing when expected recovery is below cost of chasing
+stop_lines:                             # candidates to test, not findings
+  pause_if_bypass_rate_over: null       # candidate to test, not a finding
+  target_quote_to_supplier_payment_hours: null
+gates:                                  # pass thresholds, not in the design; leave null until set
+  gate0_min_share: null
+  gate1_min_share: null
+  gate2_min_on_time_share: null
+  gate2_max_bypass_rate: null
+  gate2_max_loss_to_reserve: null       # loss / first-loss reserve
+  gate3_min_fee_cover_ratio: null       # fee collected / (cost to serve + loss)
+simulation:
+  n_bridges: null
+  n_runs: null
+  seed: 42
+  amount_distribution: null             # e.g. {kind: lognormal, mean: , sigma: }  (mean, sigma of ln amount)
+  outcome_probs: null                   # on_time, late, bypass, dispute, abandoned (sum to 1)
+  recovery_rate_by_outcome: null
