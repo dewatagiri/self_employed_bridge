@@ -473,7 +473,62 @@ ax.forEach(function(a){document.getElementById('dv_'+a).addEventListener('input'
         f'<script type="application/json" id="dgrid">{data}</script><script>{js}</script>')
 
 
-def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str, dev_grid=None) -> str:
+def _damage_block(dg: dict, cfg: dict) -> str:
+    """Damage rate, loss per damaged loan and the loss trip wire (A14), with sliders over a precomputed grid."""
+    ax = dg["axes"]
+
+    def near(lst, v):
+        return min(range(len(lst)), key=lambda i: abs((lst[i] if lst[i] is not None else -1) - (v if v is not None else -1)))
+    base_damage = (get(cfg, "simulation.outcome_probs.dispute") or 0) + (get(cfg, "simulation.outcome_probs.abandoned") or 0)
+    start = {"damage_rate": near(ax["damage_rate"], base_damage), "loss_per_damaged_loan": near(ax["loss_per_damaged_loan"], 0.5),
+             "trip_wire": near(ax["trip_wire"], get(cfg, "stop_lines.pause_if_loss_rate_over"))}
+    spec = [("damage_rate", "Damage rate (not completed or rejected)", "pct"),
+            ("loss_per_damaged_loan", "Lost on each damaged loan", "pct"),
+            ("trip_wire", "Trip wire: pause new loans above this loss", "wire")]
+    ctl = []
+    for key, label, kind in spec:
+        lst = ax[key]
+        txt = "off" if lst[start[key]] is None else f"{lst[start[key]]:.1%}".replace(".0%", "%")
+        ctl.append(f'<label><span>{esc(label)}</span><input type="range" id="dm_{key}" min="0" max="{len(lst)-1}" step="1" '
+                   f'value="{start[key]}" aria-label="{esc(label)}"><output id="dmo_{key}">{txt}</output></label>')
+    rows = [("loans", "Loans released per group (reach)", "num"), ("lent", "Money lent per group", "rm"),
+            ("loss", "Loss per group", "rm"), ("loss_pct_lent", "Loss as a share of money lent", "pct"),
+            ("p_tripped", "Chance the trip wire fires", "pct"), ("median_loans_at_trip", "Loans released when it fires (median)", "num"),
+            ("loss_avoided", "Loss avoided by the trip wire, per group", "rm"),
+            ("loans_given_up", "Loans given up by the trip wire, per group", "num"),
+            ("p_reserve_out", "Chance the sponsor's reserve runs out", "pct"), ("reserve_used", "Sponsor's reserve used per group", "rm"),
+            ("financier_return_pa", "DFI net return a year on drawn, before funding cost", "pct"),
+            ("guarantor_return_pa", "Guarantor net return a year on drawn", "pct"),
+            ("programme_cost_per_1000_lent", "Planned programme cost per RM1,000 lent", "rm"),
+            ("p_over_budget", "Chance the DFI + guarantor loss is above the agreed budget", "pct")]
+    trs = "".join(f'<tr><td>{esc(lbl)}</td><td class="n" id="dmr_{k}">—</td></tr>' for k, lbl, _ in rows)
+    cells = {k: (None if v is None else {n: (None if x is None else round(x, 4)) for n, x in v.items()}) for k, v in dg["cells"].items()}
+    data = _json.dumps({"axes": ax, "kinds": {k: kind for k, _, kind in rows}, "cells": cells}, separators=(",", ":"))
+    js = """
+(function(){var D=JSON.parse(document.getElementById('mgrid').textContent);
+var ax=['damage_rate','loss_per_damaged_loan','trip_wire'];
+function f(v,k){if(v===null||v===undefined)return '\u2014';if(k==='pct')return (v*100).toFixed(1)+'%';if(k==='num')return v.toLocaleString('en-MY',{maximumFractionDigits:1});var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:v!==0&&Math.abs(v)<10?1:0});return (v<0?'\u2212RM':'RM')+a;}
+function lab(a,v){return v===null?'off':(v*100).toFixed(1).replace('.0','')+'%';}
+function upd(){var key=ax.map(function(a){var i=+document.getElementById('dm_'+a).value;document.getElementById('dmo_'+a).textContent=lab(a,D.axes[a][i]);return i;}).join('|');
+var c=D.cells[key],note=document.getElementById('mnote');
+if(!c){note.style.display='block';for(var k in D.kinds){document.getElementById('dmr_'+k).textContent='\u2014';}return;}
+note.style.display='none';for(var k in D.kinds){document.getElementById('dmr_'+k).textContent=f(c[k],D.kinds[k]);}}
+ax.forEach(function(a){document.getElementById('dm_'+a).addEventListener('input',upd);});upd();})();
+"""
+    return (
+        '<p class="note">A <strong>trip wire</strong> pauses new loans when the loss so far, after recoveries, passes a line, counted as a share of the '
+        "money lent on loans whose outcome is already known. It trades <strong>reach for loss</strong>: every loan not made is a borrower not reached, "
+        "which is what developmental pricing is paying for. It also cannot stop loans already out: outcomes arrive about "
+        f"{dg['lag']} loans late here, and the wire cannot fire before {dg['min_loans']} loans have a known outcome. "
+        "Damage is the two endings abandoned and rejected; late payments and cash to the painter keep the chances in the config. "
+        "Each setting is run on the same random draws as the no-trip-wire case, so the loss avoided and loans given up are paired, not noise.</p>"
+        f'<div class="sliders">{"".join(ctl)}</div>'
+        '<p id="mnote" class="note" style="display:none;color:#b00">Damage, late and cash chances add to more than 100% for this setting.</p>'
+        f'<div class="wrap"><table><thead><tr><th>Result</th><th>Value</th></tr></thead><tbody>{trs}</tbody></table></div>'
+        f'<script type="application/json" id="mgrid">{data}</script><script>{js}</script>')
+
+
+def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str, dev_grid=None, damage_grid=None) -> str:
     s = out["summary"]
     totals = [r.total_loss for r in out["runs"]]
     reserve = get(cfg, "layers.first_loss_reserve")
@@ -502,7 +557,7 @@ def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path:
              _rm(s["breakeven_flat_fee"])],
             ["Chance the first-loss reserve is used up", fmt(s["p_reserve_exhausted"], "pct")],
             ["Chance the guarantor cap is hit", fmt(s["p_guarantor_cap_hit"], "pct")],
-            ["Cohorts paused by the bypass stop line", fmt(s["p_paused"], "pct") +
+            ["Cohorts paused by a stop line (bypass or loss)", fmt(s["p_paused"], "pct") +
              (f' (median pause after {s["median_pause_point"]:.0f} bridges)' if s["median_pause_point"] else "")],
             ["Fee-ceiling check on the average bridge", esc(ceiling.message)],
         ], {1}),
@@ -546,6 +601,8 @@ def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path:
                  "borrowers or customers behave.</p>", _binding_note(cfg), _slider_block(grid, cfg)]
     if dev_grid:
         body += ["<h2>Developmental pricing</h2>", _dev_block(dev_grid, cfg)]
+    if damage_grid:
+        body += ["<h2>Damage rate and the loss trip wire</h2>", _damage_block(damage_grid, cfg)]
     body += ["<h2>Method and limits</h2>", "<ul>"
              "<li>One run is one sponsor cohort. Each job draws a materials cost and a deposit; the bridge amount uses the "
              "same rule as the live release decision, and stops at the cohort cap.</li>"

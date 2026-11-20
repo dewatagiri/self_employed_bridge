@@ -160,3 +160,24 @@ def test_old_database_is_migrated(tmp_path):
     st = Store(p)
     cols = {r["name"] for r in st.db.execute("PRAGMA table_info(bridges)")}
     assert {"new_to_formal_credit", "would_not_proceed"} <= cols
+
+
+def test_trip_wire_pauses_the_staff_page(demo, tmp_path):
+    import copy
+    c = copy.deepcopy(demo)
+    c["stop_lines"].update(pause_if_loss_rate_over=0.05, loss_rate_min_bridges=1, outcome_lag_bridges=0)
+    app = App(c, "config/params.demo.yaml", Store(str(tmp_path / "w.db")), today=lambda: "2026-11-20")
+    httpd = HTTPServer(("127.0.0.1", 0), make_handler(app))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        port = httpd.server_address[1]
+        call(port, "POST", "/decide", example_form())
+        call(port, "POST", "/release", {"job_id": "J-0001", "supplier_paid_directly": "on"})
+        call(port, "POST", "/bridge", {"id": "BR00001", "action": "bypass"})              # a loss the engine now knows about
+        _, _, body = call(port, "GET", "/bridges")
+        assert "TRIP WIRE" in body and "above the 5.0% line" in body
+        _, _, body = call(port, "POST", "/decide", example_form(job_id="J-0002", payer_id="P-0002", borrower_id="B-0002"))
+        assert "TRIP_WIRE_LOSS" in body and "BLOCKED" in body
+        assert len(app.store.records()) == 1                                              # nothing new was released
+    finally:
+        httpd.shutdown(); httpd.server_close()

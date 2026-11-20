@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from typing import Optional
 
-from .collections import CLOSED, PAID_LATE, PAID_ON_TIME, WRITTEN_OFF, blocked_borrowers
+from .collections import CLOSED, DISPUTE, PAID_LATE, PAID_ON_TIME, RECOVERY, WRITTEN_OFF, blocked_borrowers
 from .config import get
 from .models import Bridge, Exposure
 
@@ -22,10 +22,39 @@ def is_open(rec: dict) -> bool:
     return rec["live"].state not in CLOSED
 
 
+def cohort_loss_status(cohort: str, records: list[dict]) -> dict:
+    """Loss so far in a cohort, for the loss trip wire (A14).
+
+    A bridge's outcome is *known* once it is closed, or has gone into recovery or dispute. Loss so far is the
+    amount written off plus, until it is recovered, the full balance of bridges still in recovery or dispute
+    (the cautious view). The rate is that loss over the money lent on the known bridges. Bridges still out and
+    paying are not counted either way, which is the lag the simulation also builds in.
+    """
+    known = [r for r in records if r["cohort"] == cohort and (r["live"].state in CLOSED or r["live"].state in (RECOVERY, DISPUTE))]
+    lent = sum(r["live"].amount for r in known)
+    loss = sum((r["live"].loss or 0.0) if r["live"].state == WRITTEN_OFF
+               else r["live"].outstanding if r["live"].state in (RECOVERY, DISPUTE) else 0.0 for r in known)
+    return {"cohort": cohort, "known": len(known), "lent": lent, "loss": loss, "rate": (loss / lent) if lent else 0.0}
+
+
+def trip_wire_status(cfg: dict, records: list[dict]) -> list[dict]:
+    """One entry per cohort with the trip wire state. Empty when no trip wire is set."""
+    wire = get(cfg, "stop_lines.pause_if_loss_rate_over")
+    if wire is None:
+        return []
+    min_n = get(cfg, "stop_lines.loss_rate_min_bridges") or 0
+    out = []
+    for coh in sorted({r["cohort"] for r in records}):
+        st = cohort_loss_status(coh, records)
+        out.append(st | {"wire": wire, "min": min_n, "tripped": st["known"] >= min_n and st["known"] > 0 and st["rate"] > wire})
+    return out
+
+
 def exposure_for(borrower_id: str, supplier_id: str, cohort: str, records: list[dict]) -> Exposure:
     """Live exposure before a new decision, built from the record of bridges."""
     live = [r for r in records if is_open(r)]
     mine = [r for r in records if r["borrower_id"] == borrower_id]
+    wire = cohort_loss_status(cohort, records)
     return Exposure(
         borrower_live_amount=sum(r["live"].amount for r in live if r["borrower_id"] == borrower_id),
         borrower_live_count=sum(1 for r in live if r["borrower_id"] == borrower_id),
@@ -36,6 +65,7 @@ def exposure_for(borrower_id: str, supplier_id: str, cohort: str, records: list[
         borrower_blocked=borrower_id in blocked_borrowers([r["live"] for r in records]),
         borrower_prior_bridges=len(mine),
         borrower_clean_repayments=sum(1 for r in mine if r["live"].state == PAID_ON_TIME),
+        cohort_known_bridges=wire["known"], cohort_loss_rate=wire["rate"],
     )
 
 

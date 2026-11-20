@@ -69,3 +69,22 @@ def test_developmental_section_hidden_without_sliders(built):
     assert sim.dev_grid(cfg, out["draws"]) is None
     h = report.render_simulation(out, sens, grid, cfg, "x", None)
     assert "DEVELOPMENTAL PRICING" not in h
+
+
+def test_damage_section_and_trip_wire(built):
+    import json, re
+    cfg, out, sens, grid = built
+    cfg["damage_sliders"] = {"damage_rate": [0.03, 0.05], "loss_per_damaged_loan": [0.5, 1.0], "trip_wire": [None, 0.03]}
+    dg = sim.damage_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, dg)
+    assert "Damage rate and the loss trip wire" in h and "trades <strong>reach for loss</strong>" in h
+    data = json.loads(re.search(r'<script type="application/json" id="mgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 2 * 2 * 2 and data["axes"]["trip_wire"] == [None, 0.03]
+    assert "loss_avoided" in data["cells"]["1|1|1"] and data["cells"]["1|1|0"]["loss_avoided"] is None
+    assert "https://" not in h and "http://" not in h
+
+
+def test_damage_section_hidden_without_sliders(built):
+    cfg, out, sens, grid = built
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None)
+    assert "Damage rate and the loss trip wire" not in h

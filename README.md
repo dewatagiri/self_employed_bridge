@@ -214,6 +214,18 @@ planned loss in return for **additionality**, reaching borrowers the market does
 - `pricing.all_in_rate_cap_pa` and `development.funder_loss_budget_per_cohort` are settings, empty in the
   template until the DFI and guarantor agree them. The financier's return is before its cost of funds.
 
+## Loss trip wire
+
+`stop_lines.pause_if_loss_rate_over` is the line (for example 4%): when the loss so far, after recoveries, passes it as
+a share of the money lent on loans with a known outcome, **new loans and top-ups stop** (decision A14).
+
+- **Live:** `decide` returns `BLOCKED` with `TRIP_WIRE_LOSS`, and the staff page shows a banner. A named officer lifts it
+  by changing the line in the config.
+- **Simulation:** the report's *Damage rate and the loss trip wire* section has sliders for the damage rate, the loss on each
+  damaged loan and the trip wire, and shows the loss avoided against the loans given up, on the same random draws.
+- It trades **reach for loss**, and it cannot stop loans already out (outcomes arrive late). Set the line above the loss
+  rate you plan for, or it fires on normal days.
+
 ## Honest limitations
 
 - **No loss data.** The dashboard is a what-if tool. It shows which settings matter, not what will happen.
@@ -232,7 +244,7 @@ planned loss in return for **additionality**, reaching borrowers the market does
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 161 tests (`pytest`).
+(open in a browser) · 184 tests (`pytest`).
 
 ## Licence
 

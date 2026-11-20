@@ -123,7 +123,7 @@ def cmd_simulate(args, cfg):
               f"Break-even flat fee        RM{s['breakeven_flat_fee']:,.2f}",
               f"Reserve used up            {s['p_reserve_exhausted']:.1%} of cohorts",
               f"Guarantor cap hit          {s['p_guarantor_cap_hit']:.1%} of cohorts",
-              f"Paused by bypass stop line {s['p_paused']:.1%} of cohorts",
+              f"Paused by a stop line     {s['p_paused']:.1%} of cohorts (bypass {s['p_paused_bypass']:.1%}, loss trip wire {s['p_paused_loss']:.1%})",
               f"Borrower cost a month      {s['borrower_monthly_cost']:.2%}"]
     dev = simulate.dev_base(cfg, out["draws"])
     if dev:
@@ -139,7 +139,8 @@ def cmd_simulate(args, cfg):
         sens = simulate.sensitivity(cfg, out["draws"])
         grid = simulate.slider_grid(cfg, out["draws"])
         dev_grid = simulate.dev_grid(cfg, out["draws"])
-        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid), encoding="utf-8")
+        damage_grid = simulate.damage_grid(cfg, out["draws"])
+        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid), encoding="utf-8")
         lines.append(f"Wrote {args.out}")
     _out(args, {"summary": s}, "\n".join(lines))
 

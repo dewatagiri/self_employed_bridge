@@ -12,6 +12,8 @@ Interpretations to confirm with the author (open item 1):
 """
 from __future__ import annotations
 
+from typing import Optional
+
 from .config import DECIDE_REQUIRED, ConfigInvalid, get, require
 from .models import Decision, Exposure, Job, Reason
 from .screen import screen
@@ -56,6 +58,22 @@ def borrower_limits(exposure: Exposure, cfg: dict) -> tuple[float, float, int]:
     return max_live, cap, tier
 
 
+def trip_wire_reason(exposure: Exposure, cfg: dict) -> Optional[Reason]:
+    """The loss trip wire (A14): a Reason when the cohort's loss so far is above the line, else None.
+
+    The wire is optional. Once set it needs `stop_lines.loss_rate_min_bridges`. It does not lift itself in
+    the engine: a named officer lifts it by changing the line in the config, which is a recorded decision.
+    """
+    wire = get(cfg, "stop_lines.pause_if_loss_rate_over")
+    if wire is None:
+        return None
+    require(cfg, ["stop_lines.loss_rate_min_bridges"])
+    if exposure.cohort_known_bridges >= get(cfg, "stop_lines.loss_rate_min_bridges") and exposure.cohort_loss_rate > wire:
+        return Reason("TRIP_WIRE_LOSS", f"Loss trip wire: loss so far is {exposure.cohort_loss_rate:.1%} of the money lent "
+                      f"in this cohort, above the {wire:.1%} line. New bridges are paused until a named officer reviews it.")
+    return None
+
+
 def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
     require(cfg, DECIDE_REQUIRED)
     sc = screen(job, cfg)
@@ -98,6 +116,9 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
         blocks.append(Reason("NO_PDPA_CONSENT", "No PDPA consent."))
     if not job.supplier_on_panel:
         blocks.append(Reason("SUPPLIER_NOT_ON_PANEL", "Supplier is not on the approved panel."))
+    tw = trip_wire_reason(exposure, cfg)
+    if tw:
+        blocks.append(tw)
     if exposure.borrower_blocked:
         blocks.append(Reason("BORROWER_BLOCKED", "New bridges are blocked for this borrower after a bypass."))
     if job.job_id in exposure.live_job_ids:
@@ -176,6 +197,9 @@ def decide_variation(job: Job, already_released: float, exposure: Exposure, cfg:
     to the supplier, and always reviewed by a named officer.
     """
     require(cfg, DECIDE_REQUIRED)
+    tw = trip_wire_reason(exposure, cfg)
+    if tw:
+        return Decision("BLOCKED", reasons=[tw])
     if exposure.borrower_blocked:
         return Decision("BLOCKED", reasons=[Reason("BORROWER_BLOCKED", "New releases are blocked for this borrower.")])
     if job.variation_order_signed is not True:

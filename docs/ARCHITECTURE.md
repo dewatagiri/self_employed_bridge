@@ -81,6 +81,19 @@ full simulation.
 
 Priced below cost on purpose (A13). The engine reports the cost and measures what it buys; it never assumes additionality.
 
+## Loss trip wire
+
+```
+ bridge record ─▶ loss so far (written off + balances in recovery or dispute)
+                  ÷ money lent on bridges whose outcome is known
+                        │
+          above the line and enough known loans?
+                        │ yes
+                        ▼
+   decide / decide_variation ─▶ BLOCKED (TRIP_WIRE_LOSS)      staff page banner
+   (a named officer lifts it by changing the line in the config)
+```
+
 ## Staff page
 
 ```

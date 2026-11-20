@@ -95,8 +95,13 @@ def layer_keys(cfg: dict) -> list[str]:
 
 
 def stop_line_keys(cfg: dict) -> list[str]:
-    """The bypass stop line is optional; once it is set it needs its minimum sample."""
-    return ["stop_lines.bypass_rate_min_bridges"] if get(cfg, "stop_lines.pause_if_bypass_rate_over") is not None else []
+    """Stop lines are optional; once one is set it needs its minimum sample (and the loss trip wire its lag)."""
+    keys: list[str] = []
+    if get(cfg, "stop_lines.pause_if_bypass_rate_over") is not None:
+        keys.append("stop_lines.bypass_rate_min_bridges")
+    if get(cfg, "stop_lines.pause_if_loss_rate_over") is not None:
+        keys += ["stop_lines.loss_rate_min_bridges", "stop_lines.outcome_lag_bridges"]
+    return keys
 
 
 def requirements(cfg: dict) -> dict[str, list[str]]:

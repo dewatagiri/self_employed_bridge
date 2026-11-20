@@ -144,6 +144,11 @@ class App:
         banner = ('<div class="banner">DEMO PARAMETERS: made-up limits and rates. Do not use for real lending.</div>'
                   if is_demo(self.cfg) else "")
         note = f'<div class="msg{" err" if error else ""}">{msg}</div>' if msg else ""
+        trips = [t for t in ledger.trip_wire_status(self.cfg, self.store.records()) if t["tripped"]]
+        for t in trips:
+            banner += (f'<div class="banner">TRIP WIRE: cohort {esc(t["cohort"])} has lost {t["rate"]:.1%} of the money lent '
+                       f'on {t["known"]} bridges with a known outcome, above the {t["wire"]:.1%} line. '
+                       f'New bridges and top-ups are paused until a named officer reviews it.</div>')
         return f"""<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>{esc(title)} · Bridge desk</title>
 <style>{report.CSS}{APP_CSS}</style></head><body>

@@ -64,6 +64,9 @@ collections:
 stop_lines:
   pause_if_bypass_rate_over: 0.10       # DEMO ONLY, not a finding
   bypass_rate_min_bridges: 20   # DEMO ONLY, not a finding
+  pause_if_loss_rate_over: null         # loss trip wire (author decision A14): pause new bridges when the loss so far, after recoveries, is above this share of money lent. Demo leaves it off; the damage section shows its effect
+  loss_rate_min_bridges: 20   # DEMO ONLY, not a finding
+  outcome_lag_bridges: 10   # DEMO ONLY, not a finding
   target_quote_to_supplier_payment_hours: 4   # DEMO ONLY, not a finding
 gates:
   gate0_min_share: null
@@ -82,6 +85,7 @@ simulation:
   deposit_share_of_materials: {low: 0.1, high: 0.6}   # DEMO ONLY, not a finding
   outcome_probs: {on_time: 0.80, late: 0.10, bypass: 0.05, dispute: 0.03, abandoned: 0.02}   # DEMO ONLY, not a finding
   recovery_rate_by_outcome: {on_time: 1.0, late: 0.95, bypass: 0.5, dispute: 0.7, abandoned: 0.3}   # DEMO ONLY, not a finding
+  damage_dispute_share: 0.6   # DEMO ONLY, not a finding
 sliders:                                # values the report precomputes for its sliders
   margin_of_advance: [0.80, 0.85, 0.90, 0.95, 1.00]   # DEMO ONLY, not a finding
   flat_fee_per_bridge: [30, 45, 60, 75, 90]   # DEMO ONLY, not a finding
@@ -94,6 +98,10 @@ dev_sliders:
   guarantee_fee_pa: [0.02, 0.035, 0.05, 0.07]   # DEMO ONLY, not a finding
   guarantor_cover_pct: [0.5, 0.6, 0.7, 0.8]   # DEMO ONLY, not a finding
   cost_to_serve_per_bridge: [5, 10, 15, 25, 35]   # DEMO ONLY, not a finding
+damage_sliders:                         # values the damage / trip wire section precomputes; null = section hidden
+  damage_rate: [0.02, 0.03, 0.04, 0.05, 0.07]   # DEMO ONLY, not a finding
+  loss_per_damaged_loan: [0.3, 0.5, 0.7, 1.0]   # DEMO ONLY, not a finding
+  trip_wire: [null, 0.02, 0.03, 0.04, 0.06]   # DEMO ONLY, not a finding
 market_reference:                       # public, dated; comparison only, never used in a decision
   approved_by_author: false             # flip to true once the author has checked each source
   margin_of_advance:                    # market products measure it against contract or invoice value

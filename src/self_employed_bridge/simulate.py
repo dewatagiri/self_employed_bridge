@@ -6,7 +6,9 @@ One run = one cohort:
      rule `decide` uses (`advance_limit`), stopping when the cohort cap is used up;
   2. draw an outcome per bridge from `outcome_probs`;
      loss = amount * (1 - recovery_rate_by_outcome[outcome]);
-  3. optional stop line: once `bypass_rate_min_bridges` are out, stop releasing when the
+  3. optional stop lines. Loss trip wire (A14): when the loss so far, after recoveries, as a share of money
+     lent on loans whose outcome is already known (all but the last `outcome_lag_bridges`) passes
+     `pause_if_loss_rate_over`, stop releasing. Bypass stop line: once `bypass_rate_min_bridges` are out, stop releasing when the
      bypass rate to date exceeds `pause_if_bypass_rate_over`; record the pause point;
   4. allocate losses with `allocate_pool` (reserve shared across the cohort);
   5. financier result = flat fees - cost to serve - financier loss. The guarantee fee is charged
@@ -56,6 +58,7 @@ class Run:
     paused_at: Optional[int]
     reserve_exhausted: bool
     guarantor_cap_hit: bool
+    paused_by: Optional[str] = None          # "bypass" or "loss"
 
 
 # ---------- config checks ----------
@@ -109,10 +112,17 @@ def run_cohort(draws: list[Draw], cfg: dict) -> Run:
     g_rate = get(cfg, "pricing.guarantee_fee_rate_on_drawn") if on else 0.0
     tenor = get(cfg, "tenor.typical_days")
 
+    loss_wire = get(cfg, "stop_lines.pause_if_loss_rate_over")
+    loss_min = get(cfg, "stop_lines.loss_rate_min_bridges") or 0
+    lag = get(cfg, "stop_lines.outcome_lag_bridges") or 0
+    cum_amt: list[float] = []                # running totals, so the trip wire test is O(1) per loan
+    cum_loss: list[float] = []
+
     released = materials = gfee = 0.0
     n = bypasses = 0
     losses: list[float] = []
     paused_at = None
+    paused_by = None
     for d in draws:
         amount, _, _ = advance_limit(d.materials, d.deposit_share * d.materials, cfg)
         amount = min(amount, cohort_cap - released)
@@ -126,10 +136,19 @@ def run_cohort(draws: list[Draw], cfg: dict) -> Run:
         gfee += g_rate * amount * tenor / 365
         n += 1
         losses.append(amount * (1 - rec[outcome]))
+        cum_amt.append((cum_amt[-1] if cum_amt else 0.0) + amount)
+        cum_loss.append((cum_loss[-1] if cum_loss else 0.0) + losses[-1])
         bypasses += outcome == "bypass"
         if pause_rate is not None and n >= pause_min and bypasses / n > pause_rate:
-            paused_at = n
+            paused_at, paused_by = n, "bypass"
             break
+        if loss_wire is not None:
+            # Loss trip wire (A14): only outcomes already known count. The last `lag` loans are still out, so
+            # they cannot be stopped even when the wire fires.
+            k = n - lag
+            if k >= max(loss_min, 1) and cum_amt[k - 1] > 0 and cum_loss[k - 1] / cum_amt[k - 1] > loss_wire:
+                paused_at, paused_by = n, "loss"
+                break
 
     pool = allocate_pool(losses, reserve, cover, gcap, on)["total"]
     total = sum(losses)
@@ -137,7 +156,7 @@ def run_cohort(draws: list[Draw], cfg: dict) -> Run:
     cost = get(cfg, "pricing.cost_to_serve_per_bridge") * n
     return Run(n, released, materials, total, pool["first_loss"], pool["guarantor"], pool["financier"],
                fee, gfee, cost, fee - cost - pool["financier"], bypasses, paused_at,
-               total >= reserve and total > 0, on and gcap > 0 and pool["guarantor"] >= gcap - 1e-9)
+               total >= reserve and total > 0, on and gcap > 0 and pool["guarantor"] >= gcap - 1e-9, paused_by)
 
 
 # ---------- summaries ----------
@@ -176,6 +195,8 @@ def summarise(runs: list[Run], cfg: dict) -> dict:
         "p_reserve_exhausted": sum(r.reserve_exhausted for r in runs) / len(runs),
         "p_guarantor_cap_hit": sum(r.guarantor_cap_hit for r in runs) / len(runs),
         "p_paused": len(paused) / len(runs),
+        "p_paused_bypass": sum(r.paused_by == "bypass" for r in runs) / len(runs),
+        "p_paused_loss": sum(r.paused_by == "loss" for r in runs) / len(runs),
         "median_pause_point": statistics.median(paused) if paused else None,
         "avg_bridge": released / bridges,
         "advance_share_of_materials": released / (sum(r.materials for r in runs) or 1.0),
@@ -375,3 +396,81 @@ def dev_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
                 for si, cts in enumerate(sl["cost_to_serve_per_bridge"]):
                     cells[f"{ci}|{ai}|{gi}|{si}"] = dev_cell(runs, c, cap, g, cts, budget)
     return {"axes": sl, "cells": cells, "budget": budget}
+
+
+# ---------- damage rate and the loss trip wire (author decision A14) ----------
+#
+# "Damage" is a project that does not finish or is rejected by the customer: the two outcomes `abandoned`
+# and `dispute`. The damage rate is their combined chance; `damage_dispute_share` of it is rejected projects.
+# Late payments and cash to the painter keep their config chances, so the on-time share is what is left.
+# The trip wire pauses new loans when the loss so far passes a line. Each combination runs on the same draws as
+# the "no trip wire" case, so the loss it avoids and the loans it gives up are paired, not noisy.
+
+def damage_config(cfg: dict, damage: float, loss_per_damaged: float, trip_wire: Optional[float]) -> Optional[dict]:
+    """A copy of cfg with the damage rate, loss per damaged loan and trip wire set; None if the chances exceed 100%."""
+    c = copy.deepcopy(cfg)
+    probs = c["simulation"]["outcome_probs"]
+    share = get(cfg, "simulation.damage_dispute_share")
+    probs["dispute"], probs["abandoned"] = damage * share, damage * (1 - share)
+    probs["on_time"] = 1 - damage - probs["late"] - probs["bypass"]
+    if probs["on_time"] < -1e-12:
+        return None
+    probs["on_time"] = max(0.0, probs["on_time"])
+    for o in ("dispute", "abandoned"):
+        c["simulation"]["recovery_rate_by_outcome"][o] = 1 - loss_per_damaged
+    c["stop_lines"]["pause_if_loss_rate_over"] = trip_wire
+    return c
+
+
+def damage_cell(runs: list[Run], cfg: dict, off_runs: Optional[list[Run]] = None) -> dict:
+    """Results for one damage / loss / trip wire setting, using the config's own cap, guarantee fee and cost to serve."""
+    cap = get(cfg, "pricing.all_in_rate_cap_pa")
+    d = dev_cell(runs, cfg, cap, get(cfg, "pricing.guarantee_fee_rate_on_drawn"),
+                 get(cfg, "pricing.cost_to_serve_per_bridge"), get(cfg, "development.funder_loss_budget_per_cohort")) if cap is not None else {}
+    tripped = [r for r in runs if r.paused_by == "loss"]
+    released = statistics.fmean(r.released for r in runs)
+    loss = statistics.fmean(r.total_loss for r in runs)
+    cell = {
+        "loans": statistics.fmean(r.n_released for r in runs),
+        "lent": released, "loss": loss, "loss_pct_lent": loss / released if released else 0.0,
+        "p_tripped": len(tripped) / len(runs),
+        "median_loans_at_trip": statistics.median(r.paused_at for r in tripped) if tripped else None,
+        "p_reserve_out": sum(r.reserve_exhausted for r in runs) / len(runs),
+        "reserve_used": statistics.fmean(r.first_loss for r in runs),
+        "loss_avoided": None, "loans_given_up": None,
+    }
+    for k in ("financier_return_pa", "guarantor_return_pa", "programme_cost_per_loan", "programme_cost_per_1000_lent",
+              "programme_net_mean", "p_over_budget"):
+        cell[k] = d.get(k)
+    if off_runs is not None:
+        cell["loss_avoided"] = statistics.fmean(a.total_loss - b.total_loss for a, b in zip(off_runs, runs))
+        cell["loans_given_up"] = statistics.fmean(a.n_released - b.n_released for a, b in zip(off_runs, runs))
+    return cell
+
+
+def damage_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
+    """Precompute the damage / trip wire grid for the report. Cells are keyed by slider position
+    (damage|loss per damaged loan|trip wire); a null trip wire in the list means no trip wire."""
+    sl = {k: get(cfg, f"damage_sliders.{k}") for k in ("damage_rate", "loss_per_damaged_loan", "trip_wire")}
+    if not all(sl.values()):
+        return None
+    need = ["simulation.damage_dispute_share"]
+    if any(t is not None for t in sl["trip_wire"]):
+        need += ["stop_lines.loss_rate_min_bridges", "stop_lines.outcome_lag_bridges"]
+    require(cfg, need)
+    cells = {}
+    for di, dmg in enumerate(sl["damage_rate"]):
+        for li, lpd in enumerate(sl["loss_per_damaged_loan"]):
+            c0 = damage_config(cfg, dmg, lpd, None)
+            off = [run_cohort(dr, c0) for dr in draws] if c0 is not None else None   # the paired "no trip wire" runs
+            for ti, tw in enumerate(sl["trip_wire"]):
+                key = f"{di}|{li}|{ti}"
+                if off is None:                       # damage + late + cash chances above 100%
+                    cells[key] = None
+                elif tw is None:
+                    cells[key] = damage_cell(off, c0)
+                else:
+                    c = damage_config(cfg, dmg, lpd, tw)
+                    cells[key] = damage_cell([run_cohort(dr, c) for dr in draws], c, off)
+    return {"axes": sl, "cells": cells, "lag": get(cfg, "stop_lines.outcome_lag_bridges"),
+            "min_loans": get(cfg, "stop_lines.loss_rate_min_bridges")}

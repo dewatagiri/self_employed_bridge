@@ -58,3 +58,40 @@ def test_open_bridges_not_in_log():
 from tests.conftest import ROOT  # noqa: E402
 from self_employed_bridge.config import load_config  # noqa: E402
 CFG = load_config(ROOT / "config" / "params.demo.yaml")
+
+
+# ---- loss trip wire in live use (A14) ----
+
+def _wire(demo, line=0.05, min_n=2):
+    c = __import__("copy").deepcopy(demo)
+    c["stop_lines"].update(pause_if_loss_rate_over=line, loss_rate_min_bridges=min_n, outcome_lag_bridges=0)
+    return c
+
+
+def test_cohort_loss_counts_only_known_outcomes(demo):
+    live = rec("1", amount=3000)                                   # still out and paying: not known
+    paid = rec("2", amount=3000); paid["live"], _ = col.payment(paid["live"], 3000)
+    bad = rec("3", amount=3000); bad["live"], _ = col.bypass(bad["live"])                    # in recovery: full balance counts
+    gone = rec("4", amount=3000); gone["live"], _ = col.abandon(gone["live"]); gone["live"], _ = col.payment(gone["live"], 1000)
+    gone["live"], _ = col.write_off(gone["live"], demo)                                       # written off: RM2,000 lost
+    st = ledger.cohort_loss_status("C1", [live, paid, bad, gone])
+    assert st["known"] == 3 and st["lent"] == 9000 and st["loss"] == pytest.approx(3000 + 2000)
+    assert st["rate"] == pytest.approx(5000 / 9000)
+    assert ledger.cohort_loss_status("C2", [live, paid, bad, gone])["known"] == 0
+
+
+def test_trip_wire_status_and_off_by_default(demo):
+    paid = rec("1"); paid["live"], _ = col.payment(paid["live"], 3000)
+    bad = rec("2"); bad["live"], _ = col.bypass(bad["live"])
+    assert ledger.trip_wire_status(demo, [paid, bad]) == []                  # demo has it off
+    on = ledger.trip_wire_status(_wire(demo, 0.05, 2), [paid, bad])
+    assert on[0]["tripped"] and on[0]["rate"] == pytest.approx(0.5)
+    assert not ledger.trip_wire_status(_wire(demo, 0.60, 2), [paid, bad])[0]["tripped"]   # under the line
+    assert not ledger.trip_wire_status(_wire(demo, 0.05, 3), [paid, bad])[0]["tripped"]   # too few known bridges
+
+
+def test_exposure_carries_the_cohort_loss(demo):
+    paid = rec("1"); paid["live"], _ = col.payment(paid["live"], 3000)
+    bad = rec("2"); bad["live"], _ = col.bypass(bad["live"])
+    e = ledger.exposure_for("B9", "S9", "C1", [paid, bad])
+    assert e.cohort_known_bridges == 2 and e.cohort_loss_rate == pytest.approx(0.5)

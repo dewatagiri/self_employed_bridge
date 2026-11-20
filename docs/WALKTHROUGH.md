@@ -138,6 +138,6 @@ different owners. Suggested order, because each step depends on the one before:
 | 2 | Risk / credit | `screen.*`, `release.*` (incl. `margin_of_advance`), `borrower.min_trade_months_or_jobs`, `caps.*` (incl. `step_up_tiers`), `tenor.two_step_release_over_amount` | Who gets a bridge and how much. Needed before any release. |
 | 3 | Sponsor, DFI, guarantor | `layers.first_loss_reserve`, guarantor terms, `development.funder_loss_budget_per_cohort`, `pricing.all_in_rate_cap_pa` | Sized against the cohort cap from step 2. |
 | 4 | Collections owner | `collections.*` | Days past due for each step and the write-off point. |
-| 5 | Pilot steering group | `gates.*` (incl. the additionality marks `gate4_*`), `stop_lines.*` | **Set before cohort 1 data comes in**, so the pass marks are not fitted to the results. |
+| 5 | Pilot steering group | `gates.*` (incl. the additionality marks `gate4_*`), `stop_lines.*` (incl. the loss trip wire, its minimum loans and the outcome lag) | **Set before cohort 1 data comes in**, so the pass marks are not fitted to the results. |
 | 6 | Finance | `pricing.*`, `tenor.typical_days` | Fee from measured cost to serve plus expected loss; the first cohort measures both. |
 | 7 | Analysis | `simulation.*` | From cohort 1 data. Until then the simulator is a what-if tool only. |
