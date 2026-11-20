@@ -1,91 +1,220 @@
-# Job-Linked Bridge engine
+# Job-Linked Bridge
 
-A parametric engine for a **job-linked materials bridge**: a short loan tied to one confirmed job,
-capped at the materials cost, paid to the supplier (never the borrower), and repaid from the
-customer's payment into a controlled account.
+**Finance the materials of one confirmed job, pay the supplier directly, and get repaid from that job's payment.**
 
-It screens a job, decides whether to release a bridge, allocates losses through the layers,
-checks pricing and compliance flags, runs the recovery path, and scores the four pilot gates from
-a bridge log. **Every limit, rate and threshold is a parameter. Nothing is hard-coded.**
+> **Pilot design tool, not a live product yet.** The rules are real and tested; the numbers are not.
+> No Malaysian loss data exists, so every limit, rate and probability in `config/params.demo.yaml` is
+> made up (`# DEMO ONLY, not a finding`) and every page built from it says **DEMO PARAMETERS**. The
+> sample data is synthetic. Views are the author's own. Not financial advice.
 
-> **Sensitivity tool, not a forecast.** No Malaysian loss data exists. Every value in
-> `config/params.demo.yaml` is made up (`# DEMO ONLY, not a finding`) and every report built from
-> it says **DEMO PARAMETERS**. The sample CSVs are synthetic. Views are the author's own. Not financial advice.
+## The problem, in one job
 
-## Run
+A painter wins a **RM12,000** job. The customer pays a **RM2,000** deposit. Paint and fittings cost
+**RM5,000**, and the supplier wants paying before delivery. A bank asks for collateral or a track record
+the painter does not have. So who funds the RM3,000 gap?
 
-```bash
-pip install -e ".[dev]"
-python -m pytest                                    # 141 tests
+The **bridge** does. It uses the job itself as the security: it pays the **supplier** (never the
+painter) the RM3,000, the customer pays the final bill into an **account the lender controls**, the
+bridge is repaid first and the rest goes to the painter. If the customer never pays, the loss falls on
+a **sponsor's reserve** first, then a **guarantor**, and only then on the **lender** (a DFI).
 
-bridge check-config config/params.template.yaml     # what must be set before live use (exit 1)
-bridge screen  data/example_job.json --config config/params.demo.yaml
-bridge decide  data/example_job.json --config config/params.demo.yaml --exposure data/example_exposure.json
-bridge waterfall --loss 25000 --config config/params.demo.yaml
-bridge gates   data/sample_log.csv --config config/params.demo.yaml --jobs data/sample_jobs.csv --out gates.html
-bridge simulate --config config/params.demo.yaml --out report.html
+## How it works
+
+```
+ CUSTOMER confirms a job with a TRADESPERSON (painter, tiler, electrician, plumber)
+        │  quote with a materials list, named payer, deposit paid
+        ▼
+┌──────────────────────────────────────────┐
+│ 1. FOUR QUESTIONS (screen)               │  any 'no' stops here:
+│    named payer, not the borrower?        │  refer to general micro-financing,
+│    materials are the main cost?          │  refer to contract / invoice financing,
+│    household / individual / small biz?   │  or 'no bridge needed'
+│    deposit below the materials cost?     │
+└─────────────────────┬────────────────────┘
+                      │  passes all four
+                      ▼
+┌──────────────────────────────────────────┐
+│ 2. CHECKS (decide)                       │  fail  → DECLINE or BLOCKED
+│    eKYC, financial-crime screening,      │  small first bridge: registration
+│    payer identity, credit record,        │  may be waived (A11)
+│    business registration, trade record,  │  possible screening match → officer
+│    PDPA consent, supplier on the panel,  │
+│    one live bridge per job, no bypass    │
+└─────────────────────┬────────────────────┘
+                      │
+                      ▼
+┌──────────────────────────────────────────┐
+│ 3. HOW MUCH (decide)                     │  painter: RM5,000 − RM2,000 = RM3,000
+│    gap = materials − deposit             │  large job → two tranches
+│    capped by: margin of advance,         │  small template job → automatic
+│    per-bridge cap, supplier invoice,     │  otherwise → a named credit officer
+│    borrower / supplier / cohort /        │
+│    pilot caps (step up after clean       │
+│    repayments)                           │
+└─────────────────────┬────────────────────┘
+                      │  RELEASE
+                      ▼
+┌──────────────────────────────────────────┐
+│ 4. PAY THE SUPPLIER, never the borrower  │  variation signed by the payer?
+│    bridge recorded on the staff page     │  → top up the same bridge (A5)
+└─────────────────────┬────────────────────┘
+                      │  job done
+                      ▼
+┌──────────────────────────────────────────┐
+│ 5. CUSTOMER PAYS the controlled account  │  on time → clean repayment,
+│    bridge repaid first, balance released │  counts toward a step-up
+│    to the tradesperson                   │
+└─────────────────────┬────────────────────┘
+                      │  something goes wrong
+                      ▼
+┌──────────────────────────────────────────┐
+│ 6. RECOVERY (collections) — tasks only   │  bypass repaid + officer approval
+│    late: reminder → notice → escalate    │  → block lifts; second bypass → out
+│    bypass: hold, block, recover          │  no home or workplace visits
+│    dispute: hold part, mediate           │
+│    abandoned: supplier takes stock back  │
+│    stop chasing when it costs more       │
+└─────────────────────┬────────────────────┘
+                      │  written off
+                      ▼
+┌──────────────────────────────────────────┐
+│ 7. WHO ABSORBS THE LOSS (waterfall)      │  claim file for the guarantor:
+│    1st  sponsor's first-loss reserve     │  job record, invoice, receipts,
+│         (one pool per cohort)            │  notices, recovery steps
+│    2nd  guarantor, a share up to a cap   │
+│    3rd  financier (DFI), the rest        │
+└─────────────────────┬────────────────────┘
+                      │  every month
+                      ▼
+┌──────────────────────────────────────────┐
+│ 8. PILOT GATES (from the bridge log)     │  no pass mark set → NO_THRESHOLD_SET
+│    0 size  1 mechanics                   │  (the engine never invents one)
+│    2 performance  3 economics            │
+│    cohort 2 only if 1 and 2 PASS         │
+└──────────────────────────────────────────┘
 ```
 
-Open the outputs without running anything: [`docs/demo_report.html`](docs/demo_report.html) (simulation,
-charts, sliders) and [`docs/demo_gates.html`](docs/demo_gates.html) (pilot gates). Both are built from
-demo parameters and synthetic data.
+**In one sentence:** the engine decides whether a job qualifies and how much to lend against it, sends
+the money to the supplier, tells staff what to do when the customer does not pay, splits any loss
+between sponsor, guarantor and lender, and scores whether the pilot is working.
 
-Add `--json` to any command for machine-readable output. Run any live command against the
-template and it refuses, naming each null it needs (exit 2).
+| Box | What it is in the code |
+|---|---|
+| 1 Four questions | `screen.py` |
+| 2–3 Checks and how much | `decide.py` (`decide`, `advance_limit`, `borrower_limits`) |
+| 4 Pay the supplier, variation top-ups | `decide.py` (`decide_variation`), staff page `app.py` |
+| 5–6 Repayment and recovery | `collections.py` |
+| 7 Who absorbs the loss | `waterfall.py` |
+| 8 Pilot gates | `gates.py` |
+| Price and compliance checks | `pricing.py`, `compliance.py` |
+| What-if dashboard | `simulate.py`, `report.py` |
+| Staff page and its record | `app.py`, `ledger.py`, `store.py` (SQLite) |
 
-## Staff page (for running a first cohort)
+## Who uses it
 
-```bash
-bridge serve --config config/params.demo.yaml --db bridge.db
-```
-
-Open <http://127.0.0.1:8000> on the same PC. Staff enter a job and get the engine's decision, record
-the release once the supplier is paid, then run each bridge to its end: payments, days past due
-(reminder, notice, escalation, write-off fire on their days), bypass and cure, dispute, abandonment,
-variation top-ups. The **Pilot gates** page and the CSV log are built from the same record.
-
-- The page only listens on this PC, uses only the Python standard library, and keeps one file
-  (`bridge.db`, SQLite). Back that file up; it is the record.
-- Exposure, reserve left and guarantor cap left are worked out from the record; staff never add them up.
-- Every release is re-checked by the engine when it is recorded. The page contacts nobody: it records
-  what staff did.
-- With the template config it refuses to decide and lists the settings still missing.
-
-On Windows PowerShell, use `py -3.13 -m self_employed_bridge.cli serve --config config/params.demo.yaml`.
-
-## The worked example
-
-A painter wins a RM12,000 job; the customer pays RM2,000 deposit; materials cost RM5,000.
-`screen` → `BRIDGE_CANDIDATE`. `decide` → release **RM3,000 to the supplier**, auto review.
-A RM25,000 write-off under the demo layers → reserve RM10,000, guarantor RM5,000 (capped), financier RM10,000.
-
-## What's where
-
-| Step | Module | Does |
+| Who | When | Where |
 |---|---|---|
-| Four questions | `screen.py` | confirmed job, materials share, payer type, deposit below materials |
-| Release | `decide.py` | KYC and screening results, amount (margin of advance, every cap), two-step release, review level |
-| Loss layers | `waterfall.py` | reserve → guarantor (capped) → financier; cohort pool |
-| Pricing | `pricing.py` | flat fee + guarantee fee on drawn; break-even; fee-ceiling warning |
-| Compliance | `compliance.py` | effective rate vs moneylender caps, controlled-account flag, PDPA export guard |
-| Recovery | `collections.py` | state machine, tasks by days past due, write-off, claim file |
-| Gates | `gates.py` | gates 0–3, cohort measures, second-cohort rule |
-| Simulation | `simulate.py` | cohort Monte Carlo, stop line, ±25% sensitivity, slider grid |
-| Staff page | `app.py`, `ledger.py`, `store.py` | local web page over the engine; exposure and log from the record (SQLite) |
-| Output | `report.py`, `cli.py` | offline HTML, command line |
+| Job source staff | a customer confirms a job | **Staff page → New job** |
+| Credit officer | deposit paid, supplier invoice in | **Staff page**: decision, then *Record release* once the supplier is paid |
+| Credit officer | the customer signs a variation | **Staff page → bridge → Variation signed: top up** |
+| Collections owner | daily, for late bridges | **Staff page → Bridges and tasks**: set days past due; tasks appear on their day |
+| Pilot steering group | monthly | **Staff page → Pilot gates**, or `bridge gates` on a log |
+| Management, DFI, guarantor, sponsor | before and during the pilot | **What-if dashboard**: `bridge simulate` (see [`docs/demo_report.html`](docs/demo_report.html)) |
 
-Design and data flow: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md).
-Every interpretation made in the build, and what is still open: [`docs/DECISIONS.md`](docs/DECISIONS.md).
-Step by step with real outputs, and who sets which parameter before going live: [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md).
+## Try it
 
-## Margin of advance and the market
+Windows PowerShell, one line at a time. Use Python 3.11 to 3.13: on a newer pre-release Python, PyYAML has
+no ready-made package yet and the install asks for a C++ compiler.
 
-`release.margin_of_advance` caps a bridge at a share of the quoted materials cost, never above 100%.
-Market contract and invoice products advance 80–100% of contract or invoice value, often with
-collateral. Those public references sit in `market_reference` (dated, organisation names left out,
-**pending author approval**) and appear in the report for comparison only. They never drive a decision,
-and the fee is never derived from a market rate.
+```powershell
+git clone https://github.com/dewatagiri/self_employed_bridge.git
+cd self_employed_bridge
+py -3.13 -m pip install -e ".[dev]"
+py -3.13 -m pytest -q
+```
 
-## Status
+**Staff page** (then open <http://127.0.0.1:8000> and press *Fill the example job*):
 
-Phases 1–3 done: core logic, collections and gates, simulator and report.
+```powershell
+py -3.13 -m self_employed_bridge.cli serve --config config/params.demo.yaml
+```
+
+**What-if dashboard** (charts, market comparison, sliders):
+
+```powershell
+py -3.13 -m self_employed_bridge.cli simulate --config config/params.demo.yaml --out report.html
+start report.html
+```
+
+On Mac or Linux use `pip install -e ".[dev]"` and the `bridge` command, e.g. `bridge serve --config config/params.demo.yaml`.
+
+Other commands: `screen`, `decide` (add `--top-up-after RM` for a variation), `waterfall --loss RM`,
+`gates`, `check-config`. Add `--json` for machine-readable output.
+
+## The rules as built
+
+The author's decisions are numbered **A1–A12** in [`docs/DECISIONS.md`](docs/DECISIONS.md).
+
+- **Who is in it** (A1): a development financial institution funds the bridges; a guarantee provider
+  covers part of the loss; a sponsor funds the first-loss reserve; a job source holds the quote and deposit.
+- **Who qualifies:** all four questions must be yes. Companies, agencies and GLCs with a purchase order go to
+  contract or invoice financing instead.
+- **Identity:** eKYC verified, financial-crime screening clear (a possible match or politically exposed person
+  goes to an officer for enhanced checks; a true match is declined), payer identity confirmed, PDPA consent.
+  The engine reads the provider's results; it never verifies identity itself.
+- **Registration** (A11): business registration is required, except for a borrower's first bridge at or below
+  a set amount, if the financier's rules allow.
+- **How much** (A2): the whole deposit counts first, so the bridge covers only the gap. Never above the materials
+  cost; capped by the margin of advance, the per-bridge cap, the invoice, and the borrower, supplier, cohort and
+  pilot caps. Borrower limits **step up** after clean repayments (A11).
+- **Who is paid:** the supplier, always. Larger jobs release in two steps.
+- **Review:** automatic only for a small job that passes everything and matches the trade template; otherwise a
+  named credit officer. A template mismatch goes to the officer, not a block (A6).
+- **Variations** (A5): a variation signed by the payer can top up the same bridge, within every limit, always
+  reviewed by an officer.
+- **When it goes wrong:** the engine produces tasks with an owner (job source, financier, collections owner,
+  supplier); it contacts nobody, and no task asks for a home or workplace visit. A **bypass** (customer pays the
+  borrower) blocks the borrower until it is repaid in full and an officer approves; a second bypass is final (A7).
+- **Losses** (A3): one first-loss reserve per sponsor cohort, then the guarantor up to its cap, then the DFI.
+  Every write-off gets a claim file for the guarantor.
+- **Price** (A4): one flat fee per bridge, set from measured cost to serve plus expected loss, never from a rate.
+  The borrower also pays a guarantee fee on the amount drawn, which goes to the guarantor. A fee above 1.5% a
+  month on the bridge triggers a "needs a stated reason" warning (A10).
+- **Pilot gates:** size, mechanics, performance, economics. A gate with no pass mark says
+  `NO_THRESHOLD_SET`; cohort 2 may start only when cohort 1 passes gates 1 and 2.
+
+## Nothing is hard-coded
+
+| File | What it holds |
+|---|---|
+| `config/params.template.yaml` | the real settings. Pilot numbers are `null` until agreed; the engine refuses to decide while one it needs is `null`, and names it |
+| `config/params.demo.yaml` | made-up numbers so everything runs |
+
+`bridge check-config config/params.template.yaml` lists every setting still missing and what it blocks.
+[`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) says who sets each one, in what order, with real outputs from
+one job, one cohort and one pilot.
+
+**Margin of advance and the market.** Market contract and invoice products advance 80–100% of contract or
+invoice value, often against collateral. This bridge advances against the quoted materials cost, with no
+collateral. The market figures sit in `market_reference`, marked pending until the author's team checks
+each source (A9); they are shown for comparison and never drive a decision.
+
+## Honest limitations
+
+- **No loss data.** The dashboard is a what-if tool. It shows which settings matter, not what will happen.
+  It assumes pricing and margin of advance do not change how people behave, and bridges are independent.
+- **No money moves here.** The engine and the staff page do not pay suppliers, connect to banks, run eKYC or
+  contact anyone. Staff do those things and record them.
+- **The staff page is for one PC and a small first cohort.** It has no user logins, so the record shows what
+  was done but not who did it. A live product needs logins, a shared database and backups.
+- **Legal points are flags, not answers:** whether the controlled account needs central-bank approval, and how
+  the fee is treated under the DFI's rules, are for legal to confirm.
+- **Market references are unverified** until the author's team opens each source.
+
+## More
+
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) (design and data flow) ·
+[`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
+[`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
+[`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
+(open in a browser) · 141 tests (`pytest`).
