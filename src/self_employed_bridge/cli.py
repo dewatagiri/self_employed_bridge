@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import compliance, gates, report, simulate
+from . import compliance, gates, report, riskreturn, simulate
 from .config import ConfigIncomplete, ConfigInvalid, check_config, get, is_demo, layer_keys, load_config, require
 from .decide import decide, decide_variation
 from .models import Exposure, Job
@@ -123,12 +123,47 @@ def cmd_simulate(args, cfg):
               f"Break-even flat fee        RM{s['breakeven_flat_fee']:,.2f}",
               f"Reserve used up            {s['p_reserve_exhausted']:.1%} of cohorts",
               f"Guarantor cap hit          {s['p_guarantor_cap_hit']:.1%} of cohorts",
-              f"Paused by bypass stop line {s['p_paused']:.1%} of cohorts",
+              f"Paused by a stop line     {s['p_paused']:.1%} of cohorts (bypass {s['p_paused_bypass']:.1%}, loss trip wire {s['p_paused_loss']:.1%})",
               f"Borrower cost a month      {s['borrower_monthly_cost']:.2%}"]
+    dev = simulate.dev_base(cfg, out["draws"])
+    if dev:
+        lines += ["", "Developmental pricing (priced below a commercial return on purpose; additionality is measured in the pilot):",
+                  f"  Borrower all-in cap {get(cfg, 'pricing.all_in_rate_cap_pa'):.1%} a year = RM{dev['borrower_per_loan']:,.1f} per loan "
+                  f"(guarantee fee RM{dev['guarantee_fee_per_loan']:,.1f}, financier fee RM{dev['financier_fee_per_loan']:,.1f})",
+                  f"  Financier net RM{dev['financier_net_mean']:,.0f} per group = {dev['financier_return_pa']:.1%} a year on drawn, before funding cost",
+                  f"  Guarantor net RM{dev['guarantor_net_mean']:,.0f} per group = {dev['guarantor_return_pa']:.1%} a year on drawn",
+                  f"  Reserve used RM{dev['sponsor_reserve_used_mean']:,.0f} per group (DFI + guarantor money)",
+                  f"  Planned programme cost (all funders) RM{dev['programme_cost_per_loan']:,.2f} per loan, "
+                  f"RM{dev['programme_cost_per_1000_lent']:,.2f} per RM1,000 lent"]
+    rrb = riskreturn.rr_base(cfg, out["draws"])
+    if rrb:
+        d, g = rrb["dfi"], rrb["guarantor"]
+        lines += ["", "Risk and return, each party with its own costs (placeholders until the DFI and guarantor supply theirs):",
+                  f"  DFI        return on capital {d['return_on_capital_pa']:.1%} vs hurdle {d['hurdle']:.0%} (spread {d['spread']:+.1%}); "
+                  f"loss-making groups {d['p_loss']:.0%}; worst-5% average RM{d['es5']:,.0f}"]
+        if g:
+            lines.append(f"  Guarantor  return on capital {g['return_on_capital_pa']:.1%} vs hurdle {g['hurdle']:.0%} (spread {g['spread']:+.1%}); "
+                         f"loss-making groups {g['p_loss']:.0%}; worst-5% average RM{g['es5']:,.0f}")
+        rf = rrb["reserve"]
+        if rf:
+            lines.append(f"  Reserve    RM{rf['committed']:,.0f} funded up front by the DFI ({rf['dfi_share']:.0%}) and the guarantor ({rf['guarantor_share']:.0%}); "
+                         f"expected spent RM{rf['expected_used']:,.0f}, {'returned' if rf['is_returned'] else 'forfeited'} RM{rf['expected_unused']:,.0f}")
+            lines.append(f"  After funding the reserve: DFI return on capital {rrb['dfi']['ar_return_on_capital_pa']:.1%}, "
+                         + (f"guarantor {rrb['guarantor']['ar_return_on_capital_pa']:.1%}, " if rrb['guarantor'] else "")
+                         + f"joint result RM{rrb['joint_result']:,.0f} per group; "
+                         f"all-in rate covering every cost {rrb['cost_covering_all_in_after_reserve_pa']:.1%} vs cap {rrb['all_in_cap_pa']:.1%}")
+        lines.append(f"  Cost-covering all-in rate {rrb['cost_covering_all_in_pa']:.1%} a year vs cap {rrb['all_in_cap_pa']:.1%}: "
+                     f"gap {rrb['gap_pa']:+.1%} = RM{rrb['gap_per_loan']:,.2f} per loan")
     if args.out:
         sens = simulate.sensitivity(cfg, out["draws"])
         grid = simulate.slider_grid(cfg, out["draws"])
-        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config), encoding="utf-8")
+        dev_grid = simulate.dev_grid(cfg, out["draws"])
+        damage_grid = simulate.damage_grid(cfg, out["draws"])
+        rr_grid = riskreturn.rr_grid(cfg, out["draws"])
+        reserve_rows = riskreturn.reserve_table(cfg, out["draws"])
+        viability = riskreturn.viability_grid(cfg, out["draws"])
+        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid, rr_grid, reserve_rows, viability),
+                                  encoding="utf-8")
         lines.append(f"Wrote {args.out}")
     _out(args, {"summary": s}, "\n".join(lines))
 

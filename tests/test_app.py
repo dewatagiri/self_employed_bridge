@@ -131,3 +131,53 @@ def test_template_config_shows_missing_settings(template, tmp_path):
         assert "Settings missing" in body and "caps.per_bridge" in body
     finally:
         httpd.shutdown(); httpd.server_close()
+
+
+def test_additionality_answers_flow_to_the_log(server):
+    port, app = server
+    call(port, "POST", "/decide", example_form())
+    call(port, "POST", "/release", {"job_id": "J-0001", "supplier_paid_directly": "on",
+                                    "new_to_formal_credit": "yes", "would_not_proceed": ""})
+    call(port, "POST", "/bridge", {"id": "BR00001", "action": "payment", "value": "3000"})
+    rec = app.store.record("BR00001")
+    assert rec["new_to_formal_credit"] == 1 and rec["would_not_proceed"] is None
+    _, _, csv_text = call(port, "GET", "/log.csv")
+    header, row = csv_text.strip().splitlines()[:2]
+    cols = header.split(",")
+    vals = row.split(",")
+    assert vals[cols.index("new_to_formal_credit")] == "True" and vals[cols.index("would_not_proceed_without_bridge")] == ""
+
+
+def test_old_database_is_migrated(tmp_path):
+    import sqlite3
+    from self_employed_bridge.store import Store
+    p = str(tmp_path / "old.db")
+    db = sqlite3.connect(p)
+    db.executescript("""CREATE TABLE bridges (bridge_id TEXT PRIMARY KEY, job_id TEXT NOT NULL, borrower_id TEXT NOT NULL,
+      supplier_id TEXT NOT NULL, cohort TEXT NOT NULL, released_date TEXT NOT NULL, closed_date TEXT, quote_hours REAL,
+      supplier_paid_directly INTEGER NOT NULL, fee REAL NOT NULL, cost REAL NOT NULL, tranches TEXT NOT NULL, live TEXT NOT NULL);""")
+    db.commit(); db.close()
+    st = Store(p)
+    cols = {r["name"] for r in st.db.execute("PRAGMA table_info(bridges)")}
+    assert {"new_to_formal_credit", "would_not_proceed"} <= cols
+
+
+def test_trip_wire_pauses_the_staff_page(demo, tmp_path):
+    import copy
+    c = copy.deepcopy(demo)
+    c["stop_lines"].update(pause_if_loss_rate_over=0.05, loss_rate_min_bridges=1, outcome_lag_bridges=0)
+    app = App(c, "config/params.demo.yaml", Store(str(tmp_path / "w.db")), today=lambda: "2026-11-20")
+    httpd = HTTPServer(("127.0.0.1", 0), make_handler(app))
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    try:
+        port = httpd.server_address[1]
+        call(port, "POST", "/decide", example_form())
+        call(port, "POST", "/release", {"job_id": "J-0001", "supplier_paid_directly": "on"})
+        call(port, "POST", "/bridge", {"id": "BR00001", "action": "bypass"})              # a loss the engine now knows about
+        _, _, body = call(port, "GET", "/bridges")
+        assert "TRIP WIRE" in body and "above the 5.0% line" in body
+        _, _, body = call(port, "POST", "/decide", example_form(job_id="J-0002", payer_id="P-0002", borrower_id="B-0002"))
+        assert "TRIP_WIRE_LOSS" in body and "BLOCKED" in body
+        assert len(app.store.records()) == 1                                              # nothing new was released
+    finally:
+        httpd.shutdown(); httpd.server_close()

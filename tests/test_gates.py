@@ -25,7 +25,7 @@ def test_sample_files_have_40_rows(log, jobs):
 
 def test_all_null_thresholds_give_no_threshold_set(log, jobs, template):
     res = g.score(log, template, jobs)
-    assert [r.status for r in res["gates"]] == ["NO_THRESHOLD_SET"] * 4
+    assert [r.status for r in res["gates"]] == ["NO_THRESHOLD_SET"] * 5
     assert all(r.value is not None for r in res["gates"])   # values are still computed
 
 
@@ -92,3 +92,39 @@ def test_measures_on_time_matches_gate2(log, demo):
     rows = [replace(log[0], outcome="on_time", customer_paid_into_controlled_account=False)] + log[1:]
     gate2 = g.gate2(rows, demo).checks[0].value
     assert g.measures(rows, demo)["on_time_share"] == pytest.approx(gate2)
+
+
+# ---- additionality (developmental pricing, A13) ----
+
+def test_additionality_hand_count(log, demo):
+    g4 = g.gate4(log, demo)
+    asked = [b for b in log if b.new_to_formal_credit is not None]
+    assert len(asked) == 40
+    assert g4.value == pytest.approx(sum(b.new_to_formal_credit for b in asked) / 40)
+    both = [b for b in log if b.new_to_formal_credit and b.would_not_proceed_without_bridge]
+    assert g4.detail["fully_additional_borrowers"] == len(both)
+    net = sum(b.fee_charged - b.cost_to_serve - b.loss_amount for b in log)
+    assert g4.detail["programme_net_total"] == pytest.approx(net)
+    if net < 0 and both:
+        assert g4.detail["cost_per_fully_additional_borrower"] == pytest.approx(-net / len(both))
+
+
+def test_additionality_not_asked_is_not_zero(log, demo):
+    from dataclasses import replace
+    rows = [replace(b, new_to_formal_credit=None, would_not_proceed_without_bridge=None) for b in log]
+    g4 = g.gate4(rows, demo)
+    assert g4.value is None and g4.detail["asked_new_to_credit"] == 0
+    assert g4.detail["cost_per_fully_additional_borrower"] is None
+
+
+def test_additionality_threshold(log, demo):
+    demo["gates"]["gate4_min_new_to_credit_share"] = 0.0
+    demo["gates"]["gate4_min_job_needed_share"] = 0.0
+    assert g.gate4(log, demo).status == "PASS"
+    demo["gates"]["gate4_min_new_to_credit_share"] = 1.01
+    assert g.gate4(log, demo).status == "FAIL"
+
+
+def test_gate4_does_not_change_cohort_rule(log, template):
+    res = g.score_by_cohort(log, template)
+    assert not res["next_cohort"]["C2"][0]

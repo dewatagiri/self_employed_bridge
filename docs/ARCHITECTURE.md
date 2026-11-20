@@ -66,6 +66,74 @@ live decision uses. The report's sliders look results up in the precomputed grid
 never disagree with the engine. A test checks that the grid cell at the base settings equals the
 full simulation.
 
+## Developmental pricing
+
+```
+ all-in cap on the borrower ─▶ guarantee fee (to the guarantor) + financier fee (the rest)
+        │
+        ├─ financier result  = financier fee − cost to serve − financier loss
+        ├─ guarantor result  = guarantee fee − guarantor draws
+        ├─ sponsor           = first-loss reserve used
+        └─ PROGRAMME COST    = what all three lose together  ◀── the price of additionality
+                                  │
+   pilot log ─▶ gate 4 (new to formal credit, job needed the bridge) ─▶ cost per fully additional borrower
+```
+
+Priced below cost on purpose (A13). The engine reports the cost and measures what it buys; it never assumes additionality.
+
+## Risk and return: DFI vs guarantor
+
+```
+ borrower all-in charge ─▶ DFI fee ─────▶ − cost to serve − debt interest − credit loss  = result
+        (the cap)          guarantee fee ▶ − admin cost − draws on the guarantee         = result
+                                                │                                           │
+        capital: DFI equity (k × drawn) ────────┘          guarantor's cap, held a cohort ─┘
+                   │                                                    │
+   return on capital − hurdle = SPREAD            return on capital − hurdle = SPREAD
+   risk: p5, worst-5% average, P(loss-making group)
+   break-even fees (economic profit 0) added = all-in rate that covers every cost ─▶ gap to the cap
+```
+
+### The reserve: the DFI and the guarantor are the sponsors
+
+```
+ DFI ───────┐  fund up front, ring-fenced        ┌─▶ first losses of the cohort
+            ├────────────▶ RESERVE ──────────────┤
+ guarantor ─┘  (split: layers.reserve_funded_     └─▶ unused part returned to each, once loans are closed
+                          by_guarantor_pct)             and recoveries are in
+ each party's result AFTER funding = its result − its share of what the reserve spends,
+ with its tied-up money (cohort days + write-off period) charged at its own hurdle
+ JOINT RESULT = what the two lose or earn together = the real cost of the programme
+```
+
+## Path to viability
+
+```
+ five levers: cash-payment chance · damage rate · loss on bad loans · tenor · cost to serve
+        │            (each combination run on the same random draws)
+        ▼
+ loan earns  = cap × days ÷ 365          loan loses = credit loss per loan + cost to serve
+        │
+        ▼
+ joint result of DFI + guarantor, after funding the reserve ──┬─ below zero ─▶ PRICED BELOW COST (gap priced per additional borrower)
+        │                                                     └─ not below ───▶ do the two break-even fees fit inside the cap?
+        ▼                                                                         no  ─▶ costs covered, no split works
+ fees each party needs for its required return                                    yes ─▶ A WORKING SPLIT EXISTS (shown)
+```
+
+## Loss trip wire
+
+```
+ bridge record ─▶ loss so far (written off + balances in recovery or dispute)
+                  ÷ money lent on bridges whose outcome is known
+                        │
+          above the line and enough known loans?
+                        │ yes
+                        ▼
+   decide / decide_variation ─▶ BLOCKED (TRIP_WIRE_LOSS)      staff page banner
+   (a named officer lifts it by changing the line in the config)
+```
+
 ## Staff page
 
 ```

@@ -40,6 +40,7 @@ pricing:
   flat_fee_per_bridge: 60               # DEMO ONLY, not a finding
   guarantee_fee_rate_on_drawn: 0.02     # DEMO ONLY, not a finding
   cost_to_serve_per_bridge: 25          # DEMO ONLY, not a finding
+  all_in_rate_cap_pa: 0.18   # DEMO ONLY, not a finding
   fee_ceiling_reference:
     rate_per_month: 0.015               # author decision A10: two sources give the same figure
     note: "Not like-for-like. A fee well above it needs a stated reason."
@@ -48,12 +49,20 @@ pricing:
       - "top of the market invoice financing range, 0.8-1.5% a month (market_reference, pending A9)"
 layers:
   first_loss_reserve: 10000             # DEMO ONLY, not a finding
+  unused_reserve_returned: true         # author decision A16: what the cohort does not spend goes back to the sponsor once its loans are closed and recoveries are in
+  reserve_funded_by_guarantor_pct: 0.5   # DEMO ONLY, not a finding
   guarantor_enabled: true               # DEMO ONLY, not a finding
   guarantor_cover_pct: 0.5              # DEMO ONLY, not a finding
   guarantor_cap: 5000                   # DEMO ONLY, not a finding
 financier:
   type: development_institution          # author decision, 20 Nov 2026
   moneylender_caps: {secured: 0.12, unsecured: 0.18}
+  cost_of_funds_pa: 0.04   # DEMO ONLY, not a finding
+  capital_pct_of_drawn: 0.08   # DEMO ONLY, not a finding
+  cost_of_equity_pa: 0.12   # DEMO ONLY, not a finding
+guarantor:                              # the guarantee provider's own costs (author decision A15)
+  cost_of_capital_pa: 0.10   # DEMO ONLY, not a finding
+  admin_cost_per_bridge: 2   # DEMO ONLY, not a finding
 collections:
   days_past_due_reminder: 3             # DEMO ONLY, not a finding
   days_past_due_notice: 14              # DEMO ONLY, not a finding
@@ -63,6 +72,9 @@ collections:
 stop_lines:
   pause_if_bypass_rate_over: 0.10       # DEMO ONLY, not a finding
   bypass_rate_min_bridges: 20   # DEMO ONLY, not a finding
+  pause_if_loss_rate_over: null         # loss trip wire (author decision A14): pause new bridges when the loss so far, after recoveries, is above this share of money lent. Demo leaves it off; the damage section shows its effect
+  loss_rate_min_bridges: 20   # DEMO ONLY, not a finding
+  outcome_lag_bridges: 10   # DEMO ONLY, not a finding
   target_quote_to_supplier_payment_hours: 4   # DEMO ONLY, not a finding
 gates:
   gate0_min_share: null
@@ -71,18 +83,40 @@ gates:
   gate2_max_bypass_rate: null
   gate2_max_loss_to_reserve: null
   gate3_min_fee_cover_ratio: null
+  gate4_min_new_to_credit_share: null
+  gate4_min_job_needed_share: null
 simulation:
   n_bridges: 100                        # DEMO ONLY, not a finding
   n_runs: 1000                          # DEMO ONLY, not a finding
   seed: 42
+  cohort_days: 90   # DEMO ONLY, not a finding
   amount_distribution: {kind: lognormal, mean: 8.3, sigma: 0.5}   # DEMO ONLY, not a finding
   deposit_share_of_materials: {low: 0.1, high: 0.6}   # DEMO ONLY, not a finding
   outcome_probs: {on_time: 0.80, late: 0.10, bypass: 0.05, dispute: 0.03, abandoned: 0.02}   # DEMO ONLY, not a finding
   recovery_rate_by_outcome: {on_time: 1.0, late: 0.95, bypass: 0.5, dispute: 0.7, abandoned: 0.3}   # DEMO ONLY, not a finding
+  damage_dispute_share: 0.6   # DEMO ONLY, not a finding
 sliders:                                # values the report precomputes for its sliders
   margin_of_advance: [0.80, 0.85, 0.90, 0.95, 1.00]   # DEMO ONLY, not a finding
   flat_fee_per_bridge: [30, 45, 60, 75, 90]   # DEMO ONLY, not a finding
   first_loss_reserve: [5000, 7500, 10000, 15000, 20000]   # DEMO ONLY, not a finding
+development:
+  pricing_basis: developmental          # author decision A13
+  funder_loss_budget_per_cohort: 2000   # DEMO ONLY, not a finding
+dev_sliders:
+  all_in_cap_pa: [0.12, 0.15, 0.18, 0.21]   # DEMO ONLY, not a finding
+  guarantee_fee_pa: [0.02, 0.035, 0.05, 0.07]   # DEMO ONLY, not a finding
+  guarantor_cover_pct: [0.5, 0.6, 0.7, 0.8]   # DEMO ONLY, not a finding
+  cost_to_serve_per_bridge: [5, 10, 15, 25, 35]   # DEMO ONLY, not a finding
+damage_sliders:                         # values the damage / trip wire section precomputes; null = section hidden
+  damage_rate: [0.02, 0.03, 0.04, 0.05, 0.07]   # DEMO ONLY, not a finding
+  loss_per_damaged_loan: [0.3, 0.5, 0.7, 1.0]   # DEMO ONLY, not a finding
+  trip_wire: [null, 0.02, 0.03, 0.04, 0.06]   # DEMO ONLY, not a finding
+viability_sliders:                      # values the path-to-viability section precomputes; null = section hidden
+  bypass_chance: [0.01, 0.02, 0.03, 0.05]   # DEMO ONLY, not a finding
+  damage_rate: [0.02, 0.03, 0.04, 0.05]   # DEMO ONLY, not a finding
+  loss_on_bad_loans_scale: [1.0, 0.75, 0.5]   # DEMO ONLY, not a finding
+  tenor_days: [30, 45, 60, 90]   # DEMO ONLY, not a finding
+  cost_to_serve_per_bridge: [5, 10, 15, 25]   # DEMO ONLY, not a finding
 market_reference:                       # public, dated; comparison only, never used in a decision
   approved_by_author: false             # flip to true once the author has checked each source
   margin_of_advance:                    # market products measure it against contract or invoice value

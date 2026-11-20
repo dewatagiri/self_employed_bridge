@@ -39,6 +39,7 @@ pricing:
   flat_fee_per_bridge: null             # RM
   guarantee_fee_rate_on_drawn: null     # annual rate, charged on drawn amount only
   cost_to_serve_per_bridge: null        # RM, measured in the pilot
+  all_in_rate_cap_pa: null              # max the borrower pays in total (financier fee + guarantee fee), per annum, simple interest
   fee_ceiling_reference:                # published benchmark, used only as a warning
     rate_per_month: 0.015               # author decision A10: two sources give the same figure
     note: "Not like-for-like. A fee well above it needs a stated reason."
@@ -47,12 +48,20 @@ pricing:
       - "top of the market invoice financing range, 0.8-1.5% a month (market_reference, pending A9)"
 layers:
   first_loss_reserve: null              # RM, sponsor-funded, per cohort
+  unused_reserve_returned: true         # author decision A16: what the cohort does not spend goes back to the sponsor once its loans are closed and recoveries are in
+  reserve_funded_by_guarantor_pct: null   # author decision A17: the DFI and the guarantor are the sponsors and fund the reserve between them; this is the guarantor's share, the DFI funds the rest
   guarantor_enabled: true               # author decision, 20 Nov 2026: a guarantee provider covers part of the loss
   guarantor_cover_pct: null             # share of loss above the reserve
   guarantor_cap: null                   # RM, programme cap
 financier:
   type: development_institution          # author decision, 20 Nov 2026 (bank | development_institution | licensed_moneylender | other)
   moneylender_caps: {secured: 0.12, unsecured: 0.18}   # Moneylenders Act 1951, per annum, simple interest (public)
+  cost_of_funds_pa: null           # the DFI's cost of the debt that funds the drawn amount, per annum
+  capital_pct_of_drawn: null       # equity the DFI holds against the drawn amount
+  cost_of_equity_pa: null          # the DFI's required return on that equity (its hurdle)
+guarantor:                              # the guarantee provider's own costs (author decision A15)
+  cost_of_capital_pa: null          # its required return on the capital it sets aside (the guarantee cap)
+  admin_cost_per_bridge: null           # RM to monitor and administer each guaranteed bridge
 collections:
   days_past_due_reminder: null
   days_past_due_notice: null
@@ -62,6 +71,9 @@ collections:
 stop_lines:                             # candidates to test, not findings
   pause_if_bypass_rate_over: null       # candidate to test, not a finding
   bypass_rate_min_bridges: null         # bridges released before the bypass stop line is tested
+  pause_if_loss_rate_over: null         # loss trip wire (author decision A14): pause new bridges when the loss so far, after recoveries, is above this share of money lent. Demo leaves it off; the damage section shows its effect
+  loss_rate_min_bridges: null          # known-outcome bridges needed before the trip wire can fire
+  outcome_lag_bridges: null            # bridges released while earlier outcomes are still unknown, so they cannot be stopped
   target_quote_to_supplier_payment_hours: null
 gates:                                  # pass thresholds, not in the design; leave null until set
   gate0_min_share: null
@@ -70,18 +82,40 @@ gates:                                  # pass thresholds, not in the design; le
   gate2_max_bypass_rate: null
   gate2_max_loss_to_reserve: null       # loss / first-loss reserve
   gate3_min_fee_cover_ratio: null       # fee collected / (cost to serve + loss)
+  gate4_min_new_to_credit_share: null   # additionality: share of borrowers new to formal credit
+  gate4_min_job_needed_share: null      # additionality: share who say the job would not go ahead without the bridge
 simulation:
   n_bridges: null
   n_runs: null
   seed: 42
+  cohort_days: null                       # how long one cohort runs; the guarantor's capital is set aside this long
   amount_distribution: null             # materials cost of bridged jobs, e.g. {kind: lognormal, mean: , sigma: } (of ln RM)
   deposit_share_of_materials: null      # e.g. {low: , high: } uniform; deposit / materials for bridged jobs
   outcome_probs: null                   # on_time, late, bypass, dispute, abandoned (sum to 1)
   recovery_rate_by_outcome: null
+  damage_dispute_share: null          # of a damage rate, the share that is a rejected project (the rest are not completed)
 sliders:                                # values the report precomputes for its sliders; null = no slider
   margin_of_advance: null
   flat_fee_per_bridge: null
   first_loss_reserve: null
+development:
+  pricing_basis: developmental          # author decision A13: priced below a commercial return on purpose; funders accept a planned loss in return for additionality
+  funder_loss_budget_per_cohort: null   # RM the DFI and guarantor together agree they can lose per cohort; null = no budget set yet
+dev_sliders:                            # values the developmental-pricing section precomputes; null = section hidden
+  all_in_cap_pa: null
+  guarantee_fee_pa: null
+  guarantor_cover_pct: null
+  cost_to_serve_per_bridge: null
+damage_sliders:                         # values the damage / trip wire section precomputes; null = section hidden
+  damage_rate: null
+  loss_per_damaged_loan: null
+  trip_wire: null                      # list; null inside the list means no trip wire
+viability_sliders:                      # values the path-to-viability section precomputes; null = section hidden
+  bypass_chance: null
+  damage_rate: null
+  loss_on_bad_loans_scale: null         # 1.0 = the recovery rates in simulation.recovery_rate_by_outcome; 0.75 = a quarter less lost on bad loans
+  tenor_days: null
+  cost_to_serve_per_bridge: null
 market_reference:                       # public, dated; comparison only, never used in a decision
   approved_by_author: false             # flip to true once the author has checked each source
   margin_of_advance:                    # market products measure it against contract or invoice value

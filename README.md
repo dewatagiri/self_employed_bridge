@@ -199,6 +199,66 @@ invoice value, often against collateral. This bridge advances against the quoted
 collateral. The market figures sit in `market_reference`, marked pending until the author's team checks
 each source (A9); they are shown for comparison and never drive a decision.
 
+## Developmental pricing
+
+If the borrower's all-in charge is capped (for example 1.5% a month, 18% a year, guarantee fee included), the
+product may sit **below cost**. That is a choice, not a mistake: the DFI and guarantor knowingly accept a
+planned loss in return for **additionality**, reaching borrowers the market does not serve (decision A13).
+
+- The simulation report has a **Developmental pricing** section with sliders for the guarantor's cover, the
+  all-in cap, the guarantee fee and the cost to serve. It shows each party's result and the **planned programme
+  cost** per loan and per RM1,000 lent, counting the sponsor's reserve too. It claims no return.
+- The cost buys something only if the bridge reaches the right people, so that is **measured, not assumed**.
+  Gate 4 uses two answers recorded at release (on the staff page): is the borrower new to formal credit, and
+  does the borrower say the job would not have gone ahead without the bridge.
+- `pricing.all_in_rate_cap_pa` and `development.funder_loss_budget_per_cohort` are settings, empty in the
+  template until the DFI and guarantor agree them. The financier's return is before its cost of funds.
+
+## Risk and return: the DFI and the guarantor
+
+One section of the simulation report compares the two parties that carry credit risk above the sponsor's reserve, each
+with **its own costs** (decision A15). The DFI pays interest on the debt that funds the loans, holds equity against them and
+bears the cost to serve. The guarantor sets its guarantee cap aside as capital and pays an admin cost per bridge.
+
+For each it shows the result per group, the **return on capital against its own hurdle (the spread it earns)**, economic profit,
+and risk: a bad group, the average of the worst 5% of groups, and the chance of a loss-making group. It also shows each party's
+**break-even fee**, the all-in rate that covers every cost, and the gap to the borrower's cap. All costs are settings:
+placeholders in the demo, empty in the real template.
+
+### The reserve: the DFI and the guarantor are the sponsors
+
+There is no outside funder (decision A17). The DFI and the guarantor **fund the first-loss reserve between them, up front, into a
+ring-fenced account** (a promise is not enough: the guarantor's cover sits on top of it), and every rand of credit loss lands on the
+two of them. What the cohort does not spend goes back (A16). The report shows each party's result **after funding its share**,
+with its money tied up charged at its own required return, a table of what each reserve size costs and does for each, and the
+**joint result**: what the two of them lose or earn together.
+
+## Path to viability
+
+Low-ticket loans are usually not profitable, and serving them is the mandate (decision A18). A loan earns **by time** (the cap ×
+days ÷ 365 of its size) but loses **by the loan**, so a short tenor, cash payments to the painter, damaged projects and a high cost to
+serve all work against it. The report's *Path to viability* section has five sliders (the chance the customer pays the painter in cash,
+the damage rate, how much is lost on bad loans, the tenor, and the cost to serve) and ends in a **verdict**:
+
+- **Priced below cost**: the DFI and the guarantor lose money together, by so much per loan.
+- **Costs covered, but no split of the cap gives both their required return.**
+- **A split of the cap exists where both earn their required return**, and the section says what each party's fee would have to be.
+
+Where a gap remains it is priced **per additional borrower**, which is what to ask a party that values additionality to pay. The cap
+is a rate a year and losses come per loan, so the tenor and the loss rate matter more than the ticket size.
+
+## Loss trip wire
+
+`stop_lines.pause_if_loss_rate_over` is the line (for example 4%): when the loss so far, after recoveries, passes it as
+a share of the money lent on loans with a known outcome, **new loans and top-ups stop** (decision A14).
+
+- **Live:** `decide` returns `BLOCKED` with `TRIP_WIRE_LOSS`, and the staff page shows a banner. A named officer lifts it
+  by changing the line in the config.
+- **Simulation:** the report's *Damage rate and the loss trip wire* section has sliders for the damage rate, the loss on each
+  damaged loan and the trip wire, and shows the loss avoided against the loans given up, on the same random draws.
+- It trades **reach for loss**, and it cannot stop loans already out (outcomes arrive late). Set the line above the loss
+  rate you plan for, or it fires on normal days.
+
 ## Honest limitations
 
 - **No loss data.** The dashboard is a what-if tool. It shows which settings matter, not what will happen.
@@ -217,7 +277,7 @@ each source (A9); they are shown for comparison and never drive a decision.
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 141 tests (`pytest`).
+(open in a browser) · 217 tests (`pytest`).
 
 ## Licence
 

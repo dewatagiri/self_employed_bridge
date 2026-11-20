@@ -52,6 +52,8 @@ class Exposure:
     borrower_blocked: bool = False       # set by collections after a bypass
     borrower_prior_bridges: int = 0      # bridges released to this borrower before (0 = first bridge)
     borrower_clean_repayments: int = 0   # bridges repaid on time, for the step-up tiers
+    cohort_known_bridges: int = 0        # loss trip wire: bridges in this cohort whose outcome is known
+    cohort_loss_rate: float = 0.0        # loss so far as a share of the money lent on those bridges
 
     @classmethod
     def from_dict(cls, d: dict) -> "Exposure":
@@ -93,3 +95,6 @@ class Bridge:
     fee_charged: float
     quote_to_supplier_payment_hours: float
     sponsor_cohort: str = ""
+    # Additionality (developmental pricing, A13). Recorded at release; None means not asked.
+    new_to_formal_credit: Optional[bool] = None            # borrower had no formal credit before this bridge
+    would_not_proceed_without_bridge: Optional[bool] = None  # borrower says the job would not have gone ahead

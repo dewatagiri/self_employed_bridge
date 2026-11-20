@@ -48,3 +48,99 @@ def test_no_sliders_without_grid(built):
 
 def test_money_format():
     assert report.fmt(-8400, "rm") == "−RM8,400" and report.fmt(900, "rm") == "RM900"
+
+
+def test_developmental_section(built):
+    cfg, out, sens, grid = built
+    dev = sim.dev_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", dev)
+    assert "DEVELOPMENTAL PRICING" in h and "priced below a commercial return on purpose" in h
+    assert "assumes <strong>no</strong> additionality" in h
+    assert h.count("<svg") == 3 and "https://" not in h and "http://" not in h
+    import json, re
+    data = json.loads(re.search(r'<script type="application/json" id="dgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 4 * 4 * 4 * 5 and data["budget"] == 2000
+    assert "programme_cost_per_loan" in next(c for c in data["cells"].values() if c)
+
+
+def test_developmental_section_hidden_without_sliders(built):
+    cfg, out, sens, grid = built
+    cfg["dev_sliders"]["all_in_cap_pa"] = None
+    assert sim.dev_grid(cfg, out["draws"]) is None
+    h = report.render_simulation(out, sens, grid, cfg, "x", None)
+    assert "DEVELOPMENTAL PRICING" not in h
+
+
+def test_damage_section_and_trip_wire(built):
+    import json, re
+    cfg, out, sens, grid = built
+    cfg["damage_sliders"] = {"damage_rate": [0.03, 0.05], "loss_per_damaged_loan": [0.5, 1.0], "trip_wire": [None, 0.03]}
+    dg = sim.damage_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, dg)
+    assert "Damage rate and the loss trip wire" in h and "trades <strong>reach for loss</strong>" in h
+    data = json.loads(re.search(r'<script type="application/json" id="mgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 2 * 2 * 2 and data["axes"]["trip_wire"] == [None, 0.03]
+    assert "loss_avoided" in data["cells"]["1|1|1"] and data["cells"]["1|1|0"]["loss_avoided"] is None
+    assert "https://" not in h and "http://" not in h
+
+
+def test_damage_section_hidden_without_sliders(built):
+    cfg, out, sens, grid = built
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None)
+    assert "Damage rate and the loss trip wire" not in h
+
+
+def test_risk_return_section(built):
+    import json, re
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["layers"]["guarantor_cover_pct"] = 0.7
+    rg = riskreturn.rr_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None, rg)
+    assert "Risk and return: the DFI and the guarantor" in h and "Each party carries its own costs" in h and "demo placeholders" in h
+    data = json.loads(re.search(r'<script type="application/json" id="rgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 4 * 4 * 4 * 5
+    cell = next(c for c in data["cells"].values() if c)
+    assert {"dfi", "guarantor", "loss_split", "gap_pa", "gap_per_loan"} <= set(cell)
+    assert "https://" not in h and "http://" not in h
+
+
+def test_risk_return_hidden_without_costs(built):
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["guarantor"]["cost_of_capital_pa"] = None
+    assert riskreturn.rr_grid(cfg, out["draws"]) is None
+    assert "Risk and return: the DFI and the guarantor" not in report.render_simulation(out, sens, grid, cfg, "x", None, None, None)
+
+
+def test_reserve_section(built):
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["layers"]["guarantor_cover_pct"] = 0.7
+    rows = riskreturn.reserve_table(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None, None, rows)
+    assert "The reserve: funded by the DFI and the guarantor" in h and "no outside sponsor" in h and "ring-fenced account" in h
+    assert "goes back to the two of them" in h and "<strong>RM10,000 (config)</strong>" in h and "Joint result per group" in h
+    cfg["layers"]["unused_reserve_returned"] = False
+    h2 = report.render_simulation(out, sens, grid, cfg, "x", None, None, None, riskreturn.reserve_table(cfg, out["draws"]))
+    assert "forfeited" in h2 and "goes back to the two of them" not in h2
+
+
+def test_viability_section(built):
+    import json, re
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["layers"]["guarantor_cover_pct"] = 0.7
+    cfg["viability_sliders"] = {"bypass_chance": [0.01, 0.05], "damage_rate": [0.03, 0.05], "loss_on_bad_loans_scale": [1.0, 0.5],
+                                "tenor_days": [30, 90], "cost_to_serve_per_bridge": [5, 25]}
+    vg = riskreturn.viability_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None, None, None, vg)
+    assert "Path to viability" in h and "A loan earns by time but loses by the loan" in h and 'id="vv"' in h
+    data = json.loads(re.search(r'<script type="application/json" id="vgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 2 ** 5 and set(data["verdicts"]) == {"0", "1", "2"}
+    assert "https://" not in h and "http://" not in h
+
+
+def test_viability_hidden_without_sliders(built):
+    cfg, out, sens, grid = built
+    assert "Path to viability" not in report.render_simulation(out, sens, grid, cfg, "x", None, None, None, None, None)

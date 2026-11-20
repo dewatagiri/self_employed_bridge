@@ -213,3 +213,40 @@ def test_step_up_tiers_cannot_lower_limits(make_job, demo, exposure):
 def test_no_step_up_when_null(make_job, demo):
     demo["caps"]["step_up_tiers"] = None
     assert decide(make_job(), Exposure(borrower_live_count=2, borrower_clean_repayments=50), demo).route == "BLOCKED"
+
+
+# ---- loss trip wire (A14) ----
+
+def _tripped(demo, line=0.04):
+    import copy
+    c = copy.deepcopy(demo)
+    c["stop_lines"].update(pause_if_loss_rate_over=line, loss_rate_min_bridges=10, outcome_lag_bridges=0)
+    return c
+
+
+def test_trip_wire_blocks_new_bridges(make_job, demo):
+    c = _tripped(demo)
+    d = decide(make_job(), Exposure(cohort_known_bridges=12, cohort_loss_rate=0.06), c)
+    assert d.route == "BLOCKED" and d.reasons[0].code == "TRIP_WIRE_LOSS" and d.approved_amount == 0
+
+
+def test_trip_wire_quiet_when_under_the_line_or_too_few(make_job, demo):
+    c = _tripped(demo)
+    assert decide(make_job(), Exposure(cohort_known_bridges=12, cohort_loss_rate=0.03), c).route == "RELEASE"
+    assert decide(make_job(), Exposure(cohort_known_bridges=9, cohort_loss_rate=0.50), c).route == "RELEASE"
+    assert decide(make_job(), Exposure(cohort_known_bridges=12, cohort_loss_rate=0.50), demo).route == "RELEASE"   # off
+
+
+def test_trip_wire_also_blocks_top_ups(make_job, demo):
+    from self_employed_bridge.decide import decide_variation
+    job = make_job(invoice_amount=6500, variation_order_signed=True)
+    d = decide_variation(job, 3000, Exposure(cohort_known_bridges=12, cohort_loss_rate=0.06), _tripped(demo))
+    assert d.route == "BLOCKED" and d.reasons[0].code == "TRIP_WIRE_LOSS"
+
+
+def test_trip_wire_needs_its_minimum_sample(make_job, demo):
+    import copy
+    c = copy.deepcopy(demo)
+    c["stop_lines"].update(pause_if_loss_rate_over=0.04, loss_rate_min_bridges=None)
+    with pytest.raises(ConfigIncomplete):
+        decide(make_job(), Exposure(), c)
