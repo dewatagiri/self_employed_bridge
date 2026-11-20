@@ -135,7 +135,7 @@ def gate1(rows: list[Bridge], cfg: dict) -> GateResult:
 
 
 def _reserve(cfg: dict, n_cohorts: int) -> Optional[float]:
-    """The reserve is held per cohort (open item 2), so n cohorts hold n reserves."""
+    """The reserve is held per cohort (author decision A3), so n cohorts hold n reserves."""
     r = get(cfg, "layers.first_loss_reserve")
     return r * n_cohorts if r else None
 

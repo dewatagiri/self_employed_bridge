@@ -109,7 +109,7 @@ def render_gates(res: dict, config_path: str, demo: bool, synthetic: bool, log_p
     hdr = ["Gate", "Metric", "Value", "Threshold", "Check", "Gate status"]
     body = ['<p class="note">Thresholds come from <code>gates.*</code> in the config. The design leaves them open, '
             "so a null threshold shows NO_THRESHOLD_SET rather than a guessed pass mark. "
-            "The first-loss reserve is assumed to be held per cohort (open item 2), so the all-cohort "
+            "The first-loss reserve is held per cohort (author decision A3), so the all-cohort "
             "loss is measured against one reserve per cohort.</p>",
             "<h2>All cohorts</h2>", table(hdr, _gate_rows(res["overall"]), {2})]
     g3 = res["overall"]["gates"][3].detail
