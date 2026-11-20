@@ -17,11 +17,13 @@
                ▼                                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │ decide.py                                                        │
-│  checks: credit record · trade record · payer not related ·      │
+│  checks: KYC · screening · payer identity · credit record ·      │
+│  trade record · payer not related ·                              │
 │  deposit from payer's account · PDPA · supplier on panel ·       │
 │  one live bridge per job · borrower not blocked · live limit     │
-│  amount = min(need, materials, invoice, per-bridge, headroom     │
-│               under borrower / supplier / cohort / pilot caps)   │
+│  amount = min(need, margin of advance × materials, per-bridge,   │
+│               invoice, headroom under borrower / supplier /      │
+│               cohort / pilot caps)          ◀── advance_limit()  │
 │  > two-step amount → 2 tranches · review auto | manual           │
 └──────────────┬───────────────────────────────────────────────────┘
                │ RELEASE, payee = supplier
@@ -46,6 +48,22 @@
 │ 3 financier, the remainder   │     │ next cohort only if 1+2 PASS│
 └──────────────────────────────┘     └───────────────────────────┘
 ```
+
+## Simulation
+
+```
+ seed ─▶ draws per cohort (materials, deposit share, outcome uniform)   made once, reused
+           │
+           ├─▶ run_cohort(base config)            ─▶ summary: mean, p5, p50, p95, probabilities
+           ├─▶ run_cohort(each input ±25%)        ─▶ sensitivity table and chart
+           └─▶ run_cohort(each margin of advance) ─▶ re-allocate per reserve, re-price per fee
+                                                    ─▶ slider grid (125 cells) embedded in the report
+```
+
+The bridge amount in a simulated cohort comes from `decide.advance_limit`, the same function the
+live decision uses. The report's sliders look results up in the precomputed grid, so the page can
+never disagree with the engine. A test checks that the grid cell at the base settings equals the
+full simulation.
 
 ## Rules the code keeps
 
@@ -75,5 +93,8 @@
 One file per module under `tests/`. They cover every acceptance test in the handover, plus:
 conservation of loss across layers, each threshold firing once when the clock jumps, closed
 bridges never writing off twice, the bypass block reaching `decide`, hand-counted gate values on
-the sample log, offline HTML (no scripts, no external links), and that every filled demo value
-carries the DEMO ONLY marker.
+the sample log, offline HTML (no external links or resources), and that every filled demo value
+carries the DEMO ONLY marker. Simulation: same seed same output, a new seed changes it, layers add
+up to total loss in every run, a huge reserve leaves nothing for the guarantor or financier, pool and
+single allocation totals agree, cohort cap and margin of advance hold, the stop line pauses, and the
+slider grid matches the full simulation.

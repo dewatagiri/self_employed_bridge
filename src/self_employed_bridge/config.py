@@ -7,6 +7,10 @@ from typing import Any, Iterable
 import yaml
 
 
+class ConfigInvalid(ValueError):
+    """A parameter is set to a value the design does not allow."""
+
+
 class ConfigIncomplete(Exception):
     """A required parameter is null or missing. `.keys` names every one."""
 
@@ -68,6 +72,7 @@ DECIDE_REQUIRED = SCREEN_REQUIRED + [
     "caps.max_live_bridges_per_borrower",
     "borrower.min_trade_months_or_jobs",
     "tenor.two_step_release_over_amount",
+    "release.margin_of_advance",
 ]
 
 PRICING_REQUIRED = ["pricing.flat_fee_per_bridge", "pricing.guarantee_fee_rate_on_drawn",
@@ -76,8 +81,10 @@ COLLECTIONS_REQUIRED = ["collections.days_past_due_reminder", "collections.days_
                         "collections.days_past_due_escalate", "collections.write_off_after_days",
                         "collections.min_expected_recovery_to_chase"]
 SIMULATE_REQUIRED = ["simulation.n_bridges", "simulation.n_runs", "simulation.seed",
-                     "simulation.amount_distribution", "simulation.outcome_probs",
-                     "simulation.recovery_rate_by_outcome", "tenor.grace_days"] + PRICING_REQUIRED
+                     "simulation.amount_distribution", "simulation.deposit_share_of_materials",
+                     "simulation.outcome_probs", "simulation.recovery_rate_by_outcome", "tenor.typical_days",
+                     "screen.deposit_to_materials_share", "release.margin_of_advance",
+                     "caps.per_bridge", "caps.per_sponsor_cohort"] + PRICING_REQUIRED
 
 
 def layer_keys(cfg: dict) -> list[str]:
@@ -85,6 +92,11 @@ def layer_keys(cfg: dict) -> list[str]:
     if get(cfg, "layers.guarantor_enabled"):
         keys += ["layers.guarantor_cover_pct", "layers.guarantor_cap"]
     return keys
+
+
+def stop_line_keys(cfg: dict) -> list[str]:
+    """The bypass stop line is optional; once it is set it needs its minimum sample."""
+    return ["stop_lines.bypass_rate_min_bridges"] if get(cfg, "stop_lines.pause_if_bypass_rate_over") is not None else []
 
 
 def requirements(cfg: dict) -> dict[str, list[str]]:
@@ -98,7 +110,7 @@ def requirements(cfg: dict) -> dict[str, list[str]]:
         "compliance": ["financier.type"],
         "waterfall": layers,
         "collections": COLLECTIONS_REQUIRED + layers,
-        "simulate": SIMULATE_REQUIRED + layers,
+        "simulate": SIMULATE_REQUIRED + layers + stop_line_keys(cfg),
     }
 
 

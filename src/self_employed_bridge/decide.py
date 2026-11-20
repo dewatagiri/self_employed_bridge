@@ -4,14 +4,34 @@ Interpretations to confirm with the author (open item 1):
 - need = max(0, materials_cost - deposit_amount * deposit_to_materials_share)
 - approved = min(need, materials_cost, invoice_amount, per_bridge, every cap headroom)
 - Never above the quoted materials cost, even when a variation order is signed.
+- margin_of_advance caps the bridge at that share of the quoted materials cost (at most 1.0).
+- KYC: the engine reads the provider's results; it does not verify identity itself.
 - Hard-check failures give DECLINE (adverse record, related payer, duplicate job) or BLOCKED.
   A template mismatch is not a block: the bridge goes to manual review.
 """
 from __future__ import annotations
 
-from .config import DECIDE_REQUIRED, get, require
+from .config import DECIDE_REQUIRED, ConfigInvalid, get, require
 from .models import Decision, Exposure, Job, Reason
 from .screen import screen
+
+
+def advance_limit(materials_cost: float, deposit_amount: float, cfg: dict) -> tuple[float, float, str]:
+    """Bridge amount before exposure caps: (amount, need, binding_limit).
+
+    need   = max(0, materials - deposit * deposit_to_materials_share)
+    amount = min(need, margin_of_advance * materials, per_bridge cap)
+    Used by `decide` and by the simulator, so both apply the same rule.
+    """
+    require(cfg, ["screen.deposit_to_materials_share", "release.margin_of_advance", "caps.per_bridge"])
+    moa = get(cfg, "release.margin_of_advance")
+    if not 0 < moa <= 1.0:
+        raise ConfigInvalid(f"release.margin_of_advance must be in (0, 1]; got {moa}. "
+                            "The bridge is never above the materials cost.")
+    need = max(0.0, materials_cost - deposit_amount * get(cfg, "screen.deposit_to_materials_share"))
+    limits = {"need": need, "margin_of_advance": moa * materials_cost, "caps.per_bridge": get(cfg, "caps.per_bridge")}
+    binding = min(limits, key=limits.get)
+    return limits[binding], need, binding
 
 
 def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
@@ -25,7 +45,21 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
     manual: list[Reason] = []
     flags: list[str] = []
 
-    # Identity and credit record.
+    # Identity (KYC results from the provider) and credit record.
+    if get(cfg, "release.require_kyc_verified"):
+        if job.borrower_kyc_status == "failed":
+            declines.append(Reason("KYC_FAILED", "Borrower identity verification failed."))
+        elif job.borrower_kyc_status != "verified":
+            blocks.append(Reason("KYC_NOT_VERIFIED", "Borrower identity is not yet verified."))
+    if job.screening_result == "true_match" and get(cfg, "borrower.decline_on_screening_true_match"):
+        declines.append(Reason("SCREENING_TRUE_MATCH", "Financial-crime screening returned a true match."))
+    elif job.screening_result in ("possible_match", "pep"):
+        manual.append(Reason("SCREENING_REVIEW", f"Screening result '{job.screening_result}': "
+                             "enhanced due diligence by a named officer."))
+    elif job.screening_result not in ("clear", "true_match"):
+        blocks.append(Reason("SCREENING_NOT_DONE", "No financial-crime screening result."))
+    if get(cfg, "release.require_payer_identity_confirmed") and job.payer_identity_confirmed is not True:
+        blocks.append(Reason("PAYER_ID_NOT_CONFIRMED", "Payer identity is not confirmed."))
     if get(cfg, "borrower.require_credit_bureau_check") and job.borrower_credit_flag == "none":
         blocks.append(Reason("NO_CREDIT_CHECK", "No credit bureau check on file."))
     if job.borrower_credit_flag == "adverse" and get(cfg, "borrower.decline_on_adverse_record"):
@@ -61,21 +95,21 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
                 "extra blocked until the payer signs a change."))
 
     # Amount.
-    share = get(cfg, "screen.deposit_to_materials_share")
-    need = max(0.0, job.materials_cost - job.deposit_amount * share)
+    base, need, binding = advance_limit(job.materials_cost, job.deposit_amount, cfg)
+    if binding == "margin_of_advance":
+        flags.append("AMOUNT_LIMITED_BY_MARGIN_OF_ADVANCE")
     headrooms = {
         "caps.per_borrower_live": get(cfg, "caps.per_borrower_live") - exposure.borrower_live_amount,
         "caps.per_supplier_live": get(cfg, "caps.per_supplier_live") - exposure.supplier_live_amount,
         "caps.per_sponsor_cohort": get(cfg, "caps.per_sponsor_cohort") - exposure.cohort_live_amount,
         "caps.pilot_total": get(cfg, "caps.pilot_total") - exposure.pilot_live_amount,
     }
-    amount = min(need, job.materials_cost, job.invoice_amount,
-                 get(cfg, "caps.per_bridge"), *headrooms.values())
+    amount = min(base, job.materials_cost, job.invoice_amount, *headrooms.values())
     amount = max(0.0, amount)
     if amount <= 0 and need > 0:
         full = [k for k, v in headrooms.items() if v <= 0]
         blocks.append(Reason("CAP_REACHED", "No headroom under: " + ", ".join(full or ["caps.per_bridge"])))
-    elif amount < need:
+    elif amount < base or binding == "caps.per_bridge":
         flags.append("AMOUNT_LIMITED_BY_CAP")
 
     if declines:

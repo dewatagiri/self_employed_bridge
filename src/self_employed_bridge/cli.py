@@ -3,6 +3,7 @@
     bridge screen    job.json --config params.yaml
     bridge decide    job.json --config params.yaml --exposure exposure.json
     bridge waterfall --loss 10000 --config params.yaml
+    bridge simulate  --config params.demo.yaml --out report.html
     bridge gates     data/sample_log.csv --config params.yaml [--jobs data/sample_jobs.csv] --out gates.html
     bridge check-config params.yaml
 
@@ -16,8 +17,8 @@ import json
 import sys
 from pathlib import Path
 
-from . import compliance, gates, report
-from .config import ConfigIncomplete, check_config, get, is_demo, layer_keys, load_config, require
+from . import compliance, gates, report, simulate
+from .config import ConfigIncomplete, ConfigInvalid, check_config, get, is_demo, layer_keys, load_config, require
 from .decide import decide
 from .models import Exposure, Job
 from .screen import screen
@@ -62,10 +63,14 @@ def cmd_screen(args, cfg):
 
 def cmd_decide(args, cfg):
     exposure = Exposure.from_dict(_load_json(args.exposure)) if args.exposure else Exposure()
-    d = decide(Job.from_dict(_load_json(args.job)), exposure, cfg)
+    job = Job.from_dict(_load_json(args.job))
+    d = decide(job, exposure, cfg)
     standing = compliance.controlled_account_flag()
-    _out(args, {"decision": d, "open_items": [standing]},
-         _banner(cfg) + _decision_text(d) + f"\nOpen item: {standing['message']}")
+    text = _banner(cfg) + _decision_text(d)
+    if d.route == "RELEASE" and job.materials_cost:
+        text += (f"\nAdvance:  {d.approved_amount / job.materials_cost:.0%} of quoted materials cost "
+                 f"(setting: up to {get(cfg, 'release.margin_of_advance'):.0%})")
+    _out(args, {"decision": d, "open_items": [standing]}, text + f"\nOpen item: {standing['message']}")
 
 
 def cmd_waterfall(args, cfg):
@@ -95,6 +100,31 @@ def cmd_gates(args, cfg):
                                   encoding="utf-8")
         lines.append(f"Wrote {args.out}")
     _out(args, res, "\n".join(lines))
+
+
+def cmd_simulate(args, cfg):
+    out = simulate.simulate(cfg)
+    s = out["summary"]
+    lines = [_banner(cfg) + f"{get(cfg, 'simulation.n_runs'):,} cohorts, seed {get(cfg, 'simulation.seed')}. "
+             "Sensitivity tool, not a forecast.",
+             f"{'Per cohort':<26}{'mean':>12}{'p5':>12}{'p50':>12}{'p95':>12}"]
+    for key, label in (("total_loss", "Total loss"), ("reserve_drawdown", "Reserve used"),
+                       ("guarantor_draw", "Guarantor draw"), ("financier_loss", "Financier loss"),
+                       ("financier_net", "Financier net")):
+        d = s[key]
+        lines.append(f"{label:<26}" + "".join(f"{d[k]:>12,.0f}" for k in ("mean", "p5", "p50", "p95")))
+    lines += [f"Financier net per bridge   RM{s['financier_net_per_bridge']:,.2f}",
+              f"Break-even flat fee        RM{s['breakeven_flat_fee']:,.2f}",
+              f"Reserve used up            {s['p_reserve_exhausted']:.1%} of cohorts",
+              f"Guarantor cap hit          {s['p_guarantor_cap_hit']:.1%} of cohorts",
+              f"Paused by bypass stop line {s['p_paused']:.1%} of cohorts",
+              f"Borrower cost a month      {s['borrower_monthly_cost']:.2%}"]
+    if args.out:
+        sens = simulate.sensitivity(cfg, out["draws"])
+        grid = simulate.slider_grid(cfg, out["draws"])
+        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config), encoding="utf-8")
+        lines.append(f"Wrote {args.out}")
+    _out(args, {"summary": s}, "\n".join(lines))
 
 
 def cmd_check_config(args):
@@ -133,6 +163,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp = add("gates", cmd_gates, "score the pilot gates from a bridge log")
     sp.add_argument("log"); sp.add_argument("--config", required=True)
     sp.add_argument("--jobs", help="jobs CSV for gate 0"); sp.add_argument("--out", help="write an HTML report")
+    sp = add("simulate", cmd_simulate, "cohort Monte Carlo and sensitivity report")
+    sp.add_argument("--config", required=True); sp.add_argument("--out", help="write the HTML report")
     sp = add("check-config", None, "list every null that blocks live use")
     sp.add_argument("path")
     return p
@@ -149,6 +181,9 @@ def main(argv=None) -> int:
         print("Config incomplete. Set these before live use:", file=sys.stderr)
         for k in e.keys:
             print(f"  {k}", file=sys.stderr)
+        return 2
+    except ConfigInvalid as e:
+        print(f"Config invalid: {e}", file=sys.stderr)
         return 2
     except (OSError, ValueError, KeyError, TypeError) as e:
         print(f"Bad input: {e}", file=sys.stderr)

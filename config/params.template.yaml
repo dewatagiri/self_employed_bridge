@@ -11,6 +11,9 @@ release:
   require_deposit_from_payer_account: true
   require_payer_not_related: true
   require_pdpa_consent: true
+  require_kyc_verified: true             # borrower eKYC result must be 'verified'
+  require_payer_identity_confirmed: true
+  margin_of_advance: null              # max bridge as a share of the quoted materials cost; never above 1.0
   auto_approve_max_amount: null         # template jobs at or below this skip manual review
   template_match_min: null              # 0 to 1 match between quote materials list and trade template
 caps:                                   # exposure limits, all RM
@@ -23,10 +26,12 @@ caps:                                   # exposure limits, all RM
 borrower:
   require_credit_bureau_check: true
   decline_on_adverse_record: true
+  decline_on_screening_true_match: true # sanctions / financial-crime screening; possible match or PEP -> manual review
   min_trade_months_or_jobs: null        # met if trade months OR completed jobs reach this
 tenor:
-  grace_days: null
+  grace_days: null                      # not used by any module yet
   two_step_release_over_amount: null    # larger jobs release in two steps (stage 1 = this amount)
+  typical_days: null                    # expected days from release to repayment
 pricing:
   flat_fee_per_bridge: null             # RM
   guarantee_fee_rate_on_drawn: null     # annual rate, charged on drawn amount only
@@ -50,6 +55,7 @@ collections:
   min_expected_recovery_to_chase: null  # stop chasing when expected recovery is below cost of chasing
 stop_lines:                             # candidates to test, not findings
   pause_if_bypass_rate_over: null       # candidate to test, not a finding
+  bypass_rate_min_bridges: null         # bridges released before the bypass stop line is tested
   target_quote_to_supplier_payment_hours: null
 gates:                                  # pass thresholds, not in the design; leave null until set
   gate0_min_share: null
@@ -62,6 +68,22 @@ simulation:
   n_bridges: null
   n_runs: null
   seed: 42
-  amount_distribution: null             # e.g. {kind: lognormal, mean: , sigma: }  (mean, sigma of ln amount)
+  amount_distribution: null             # materials cost of bridged jobs, e.g. {kind: lognormal, mean: , sigma: } (of ln RM)
+  deposit_share_of_materials: null      # e.g. {low: , high: } uniform; deposit / materials for bridged jobs
   outcome_probs: null                   # on_time, late, bypass, dispute, abandoned (sum to 1)
   recovery_rate_by_outcome: null
+sliders:                                # values the report precomputes for its sliders; null = no slider
+  margin_of_advance: null
+  flat_fee_per_bridge: null
+  first_loss_reserve: null
+market_reference:                       # public, dated; comparison only, never used in a decision
+  approved_by_author: false             # flip to true once the author has checked each source
+  margin_of_advance:                    # market products measure it against contract or invoice value
+    - {basis: contract value, max: 0.90, source: "P2P contract financing product page, accessed Nov 2026"}
+    - {basis: contract value, max: 0.90, source: "public contract-financing guarantee scheme listing, Apr 2024"}
+    - {basis: contract cost, max: 1.00, source: "development bank contract financing disclosure sheet, Jun 2023; needs 5-15% cash collateral"}
+    - {basis: invoice value, max: 0.80, source: "P2P invoice financing product page, accessed Nov 2026"}
+    - {basis: invoice value, max: 0.90, source: "invoice financing explainer, typical 80-90%, accessed Nov 2026"}
+  monthly_cost:                         # headline rates; fees on top are listed in `plus`
+    - {low: 0.008, high: 0.015, plus: "platform fee 0.75-2.25% of amount", source: "P2P invoice financing FAQ, accessed Nov 2026"}
+    - {low: 0.010, high: 0.010, plus: "1.5% origination per drawdown; 2.5% one-off processing", source: "P2P invoice financing product page, accessed Nov 2026"}

@@ -28,6 +28,10 @@ class Job:
     pdpa_consent: bool
     sponsor_cohort: str
     variation_order_signed: Optional[bool] = None
+    # KYC results from the financier's eKYC and screening provider. None means not done.
+    borrower_kyc_status: Optional[str] = None        # verified | pending | failed
+    screening_result: Optional[str] = None           # clear | possible_match | pep | true_match
+    payer_identity_confirmed: Optional[bool] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "Job":

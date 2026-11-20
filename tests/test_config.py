@@ -38,6 +38,6 @@ def test_demo_values_all_marked():
     for key in null_keys(template):
         leaf = key.split(".")[-1]
         lines = [ln for ln in text.splitlines() if ln.strip().startswith(leaf + ":")]
-        filled = [ln for ln in lines if not ln.split(":", 1)[1].strip().startswith("null")]
+        filled = [ln for ln in lines if ln.split(":", 1)[1].split("#")[0].strip() not in ("", "null")]
         for ln in filled:
             assert "# DEMO ONLY, not a finding" in ln, ln

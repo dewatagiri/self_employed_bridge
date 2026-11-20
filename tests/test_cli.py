@@ -69,3 +69,20 @@ def test_check_config_demo_clear(capsys):
 def test_bad_input(capsys, tmp_path):
     code, _, err = run(capsys, "screen", str(tmp_path / "missing.json"), "--config", DEMO)
     assert code == 2 and "Bad input" in err
+
+
+def test_simulate_writes_report(capsys, tmp_path, monkeypatch):
+    import yaml
+    cfg = yaml.safe_load(open(DEMO))
+    cfg["simulation"]["n_runs"] = 100
+    small = tmp_path / "small.yaml"
+    small.write_text(yaml.safe_dump(cfg))
+    out_file = tmp_path / "report.html"
+    code, out, _ = run(capsys, "simulate", "--config", str(small), "--out", str(out_file))
+    assert code == 0 and "Break-even flat fee" in out and "DEMO PARAMETERS" in out
+    assert out_file.read_text().count("<svg") == 3
+
+
+def test_simulate_refuses_template(capsys):
+    code, _, err = run(capsys, "simulate", "--config", TEMPLATE)
+    assert code == 2 and "simulation.outcome_probs" in err
