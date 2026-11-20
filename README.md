@@ -214,6 +214,17 @@ planned loss in return for **additionality**, reaching borrowers the market does
 - `pricing.all_in_rate_cap_pa` and `development.funder_loss_budget_per_cohort` are settings, empty in the
   template until the DFI and guarantor agree them. The financier's return is before its cost of funds.
 
+## Risk and return: the DFI and the guarantor
+
+One section of the simulation report compares the two parties that carry credit risk above the sponsor's reserve, each
+with **its own costs** (decision A15). The DFI pays interest on the debt that funds the loans, holds equity against them and
+bears the cost to serve. The guarantor sets its guarantee cap aside as capital and pays an admin cost per bridge.
+
+For each it shows the result per group, the **return on capital against its own hurdle (the spread it earns)**, economic profit,
+and risk: a bad group, the average of the worst 5% of groups, and the chance of a loss-making group. It also shows each party's
+**break-even fee**, the all-in rate that covers every cost, and the gap to the borrower's cap. All costs are settings:
+placeholders in the demo, empty in the real template.
+
 ## Loss trip wire
 
 `stop_lines.pause_if_loss_rate_over` is the line (for example 4%): when the loss so far, after recoveries, passes it as
@@ -244,7 +255,7 @@ a share of the money lent on loans with a known outcome, **new loans and top-ups
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 184 tests (`pytest`).
+(open in a browser) · 196 tests (`pytest`).
 
 ## Licence
 

@@ -81,6 +81,19 @@ full simulation.
 
 Priced below cost on purpose (A13). The engine reports the cost and measures what it buys; it never assumes additionality.
 
+## Risk and return: DFI vs guarantor
+
+```
+ borrower all-in charge ─▶ DFI fee ─────▶ − cost to serve − debt interest − credit loss  = result
+        (the cap)          guarantee fee ▶ − admin cost − draws on the guarantee         = result
+                                                │                                           │
+        capital: DFI equity (k × drawn) ────────┘          guarantor's cap, held a cohort ─┘
+                   │                                                    │
+   return on capital − hurdle = SPREAD            return on capital − hurdle = SPREAD
+   risk: p5, worst-5% average, P(loss-making group)
+   break-even fees (economic profit 0) added = all-in rate that covers every cost ─▶ gap to the cap
+```
+
 ## Loss trip wire
 
 ```

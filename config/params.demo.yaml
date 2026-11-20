@@ -55,6 +55,12 @@ layers:
 financier:
   type: development_institution          # author decision, 20 Nov 2026
   moneylender_caps: {secured: 0.12, unsecured: 0.18}
+  cost_of_funds_pa: 0.04   # DEMO ONLY, not a finding
+  capital_pct_of_drawn: 0.08   # DEMO ONLY, not a finding
+  cost_of_equity_pa: 0.12   # DEMO ONLY, not a finding
+guarantor:                              # the guarantee provider's own costs (author decision A15)
+  cost_of_capital_pa: 0.10   # DEMO ONLY, not a finding
+  admin_cost_per_bridge: 2   # DEMO ONLY, not a finding
 collections:
   days_past_due_reminder: 3             # DEMO ONLY, not a finding
   days_past_due_notice: 14              # DEMO ONLY, not a finding
@@ -81,6 +87,7 @@ simulation:
   n_bridges: 100                        # DEMO ONLY, not a finding
   n_runs: 1000                          # DEMO ONLY, not a finding
   seed: 42
+  cohort_days: 90   # DEMO ONLY, not a finding
   amount_distribution: {kind: lognormal, mean: 8.3, sigma: 0.5}   # DEMO ONLY, not a finding
   deposit_share_of_materials: {low: 0.1, high: 0.6}   # DEMO ONLY, not a finding
   outcome_probs: {on_time: 0.80, late: 0.10, bypass: 0.05, dispute: 0.03, abandoned: 0.02}   # DEMO ONLY, not a finding

@@ -54,6 +54,12 @@ layers:
 financier:
   type: development_institution          # author decision, 20 Nov 2026 (bank | development_institution | licensed_moneylender | other)
   moneylender_caps: {secured: 0.12, unsecured: 0.18}   # Moneylenders Act 1951, per annum, simple interest (public)
+  cost_of_funds_pa: null           # the DFI's cost of the debt that funds the drawn amount, per annum
+  capital_pct_of_drawn: null       # equity the DFI holds against the drawn amount
+  cost_of_equity_pa: null          # the DFI's required return on that equity (its hurdle)
+guarantor:                              # the guarantee provider's own costs (author decision A15)
+  cost_of_capital_pa: null          # its required return on the capital it sets aside (the guarantee cap)
+  admin_cost_per_bridge: null           # RM to monitor and administer each guaranteed bridge
 collections:
   days_past_due_reminder: null
   days_past_due_notice: null
@@ -80,6 +86,7 @@ simulation:
   n_bridges: null
   n_runs: null
   seed: 42
+  cohort_days: null                       # how long one cohort runs; the guarantor's capital is set aside this long
   amount_distribution: null             # materials cost of bridged jobs, e.g. {kind: lognormal, mean: , sigma: } (of ln RM)
   deposit_share_of_materials: null      # e.g. {low: , high: } uniform; deposit / materials for bridged jobs
   outcome_probs: null                   # on_time, late, bypass, dispute, abandoned (sum to 1)

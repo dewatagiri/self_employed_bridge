@@ -88,3 +88,26 @@ def test_damage_section_hidden_without_sliders(built):
     cfg, out, sens, grid = built
     h = report.render_simulation(out, sens, grid, cfg, "x", None, None)
     assert "Damage rate and the loss trip wire" not in h
+
+
+def test_risk_return_section(built):
+    import json, re
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["layers"]["guarantor_cover_pct"] = 0.7
+    rg = riskreturn.rr_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None, rg)
+    assert "Risk and return: the DFI and the guarantor" in h and "Each party carries its own costs" in h and "demo placeholders" in h
+    data = json.loads(re.search(r'<script type="application/json" id="rgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 4 * 4 * 4 * 5
+    cell = next(c for c in data["cells"].values() if c)
+    assert {"dfi", "guarantor", "loss_split", "gap_pa", "gap_per_loan"} <= set(cell)
+    assert "https://" not in h and "http://" not in h
+
+
+def test_risk_return_hidden_without_costs(built):
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["guarantor"]["cost_of_capital_pa"] = None
+    assert riskreturn.rr_grid(cfg, out["draws"]) is None
+    assert "Risk and return: the DFI and the guarantor" not in report.render_simulation(out, sens, grid, cfg, "x", None, None, None)

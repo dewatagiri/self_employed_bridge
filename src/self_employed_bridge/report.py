@@ -395,7 +395,7 @@ def _slider_block(grid: dict, cfg: dict) -> str:
     js = """
 (function(){var D=JSON.parse(document.getElementById('grid').textContent);
 var ax=['margin_of_advance','flat_fee_per_bridge','first_loss_reserve'],kind={margin_of_advance:'pct',flat_fee_per_bridge:'rm',first_loss_reserve:'rm'};
-function f(v,k){if(k==='pct')return (v*100).toFixed(1)+'%';var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:0});return (v<0?'\\u2212RM':'RM')+a;}
+function f(v,k){if(k==='pct')return (v<0?'\\u2212':'')+(Math.abs(v)*100).toFixed(1)+'%';var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:0});return (v<0?'\\u2212RM':'RM')+a;}
 function upd(){var key=ax.map(function(a){var i=+document.getElementById('s_'+a).value;document.getElementById('o_'+a).textContent=f(D.axes[a][i],kind[a]);return i;}).join('|');
 var c=D.cells[key];if(!c)return;for(var k in D.kinds){var el=document.getElementById('r_'+k);if(el)el.textContent=f(c[k],D.kinds[k]);}}
 ax.forEach(function(a){document.getElementById('s_'+a).addEventListener('input',upd);});upd();})();
@@ -450,7 +450,7 @@ def _dev_block(dev_grid: dict, cfg: dict) -> str:
     js = """
 (function(){var D=JSON.parse(document.getElementById('dgrid').textContent);
 var ax=['guarantor_cover_pct','all_in_cap_pa','guarantee_fee_pa','cost_to_serve_per_bridge'],kind={guarantor_cover_pct:'pct',all_in_cap_pa:'pct',guarantee_fee_pa:'pct',cost_to_serve_per_bridge:'rm'};
-function f(v,k){if(v===null||v===undefined)return '\u2014';if(k==='pct')return (v*100).toFixed(1)+'%';var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:v!==0&&Math.abs(v)<10?1:0});return (v<0?'\u2212RM':'RM')+a;}
+function f(v,k){if(v===null||v===undefined)return '\u2014';if(k==='pct')return (v<0?'\\u2212':'')+(Math.abs(v)*100).toFixed(1)+'%';var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:v!==0&&Math.abs(v)<10?1:0});return (v<0?'\u2212RM':'RM')+a;}
 function upd(){var key=ax.map(function(a){var i=+document.getElementById('dv_'+a).value;document.getElementById('dvo_'+a).textContent=f(D.axes[a][i],kind[a]);return i;}).join('|');
 var c=D.cells[key];var note=document.getElementById('dnote');
 if(!c){note.style.display='block';for(var k in D.kinds){document.getElementById('dr_'+k).textContent='\u2014';}return;}
@@ -507,7 +507,7 @@ def _damage_block(dg: dict, cfg: dict) -> str:
     js = """
 (function(){var D=JSON.parse(document.getElementById('mgrid').textContent);
 var ax=['damage_rate','loss_per_damaged_loan','trip_wire'];
-function f(v,k){if(v===null||v===undefined)return '\u2014';if(k==='pct')return (v*100).toFixed(1)+'%';if(k==='num')return v.toLocaleString('en-MY',{maximumFractionDigits:1});var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:v!==0&&Math.abs(v)<10?1:0});return (v<0?'\u2212RM':'RM')+a;}
+function f(v,k){if(v===null||v===undefined)return '\u2014';if(k==='pct')return (v<0?'\\u2212':'')+(Math.abs(v)*100).toFixed(1)+'%';if(k==='num')return v.toLocaleString('en-MY',{maximumFractionDigits:1});var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:v!==0&&Math.abs(v)<10?1:0});return (v<0?'\u2212RM':'RM')+a;}
 function lab(a,v){return v===null?'off':(v*100).toFixed(1).replace('.0','')+'%';}
 function upd(){var key=ax.map(function(a){var i=+document.getElementById('dm_'+a).value;document.getElementById('dmo_'+a).textContent=lab(a,D.axes[a][i]);return i;}).join('|');
 var c=D.cells[key],note=document.getElementById('mnote');
@@ -528,7 +528,84 @@ ax.forEach(function(a){document.getElementById('dm_'+a).addEventListener('input'
         f'<script type="application/json" id="mgrid">{data}</script><script>{js}</script>')
 
 
-def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str, dev_grid=None, damage_grid=None) -> str:
+def _round_deep(x, nd=4):
+    if isinstance(x, dict):
+        return {k: _round_deep(v, nd) for k, v in x.items()}
+    return round(x, nd) if isinstance(x, float) else x
+
+
+RR_ROWS = [  # label, DFI key, guarantor key, kind
+    ("Fee earned per loan", "fee_per_loan", "fee_per_loan", "rm"),
+    ("Income per group", "income", "income", "rm"),
+    ("Operating cost per group (DFI: cost to serve, guarantor: admin)", "cost_to_serve", "admin_cost", "rm"),
+    ("Funding cost per group (the DFI's debt)", "funding_cost", None, "rm"),
+    ("Credit loss taken per group", "credit_loss", "credit_loss", "rm"),
+    ("Result per group, before the cost of capital", "result", "result", "rm"),
+    ("Capital employed (the DFI's equity, the guarantor's cap)", "capital", "capital", "rm"),
+    ("Return on capital, a year", "return_on_capital_pa", "return_on_capital_pa", "pct"),
+    ("Required return (its hurdle)", "hurdle", "hurdle", "pct"),
+    ("Spread over the hurdle", "spread", "spread", "pct"),
+    ("Economic profit per group, after the cost of capital", "economic_profit", "economic_profit", "rm"),
+    ("Risk: a bad group (5th percentile result)", "p5", "p5", "rm"),
+    ("Risk: average of the worst 5% of groups", "es5", "es5", "rm"),
+    ("Risk: chance of a loss-making group", "p_loss", "p_loss", "pct"),
+    ("Return per unit of risk (mean ÷ standard deviation)", "return_per_risk", "return_per_risk", "ratio"),
+    ("Fee charged, a year on the drawn amount", "fee_pa", "fee_pa", "pct"),
+    ("Break-even fee, a year (economic profit zero)", "break_even_fee_pa", "break_even_fee_pa", "pct"),
+]
+
+
+def _rr_block(rg: dict, cfg: dict) -> str:
+    """Risk and return for the DFI and the guarantor, each with its own costs (A15), with sliders over a precomputed grid."""
+    ax = dg_ax = rg["axes"]
+    cur = {"guarantor_cover_pct": get(cfg, "layers.guarantor_cover_pct"), "all_in_cap_pa": get(cfg, "pricing.all_in_rate_cap_pa"),
+           "guarantee_fee_pa": get(cfg, "pricing.guarantee_fee_rate_on_drawn"), "cost_to_serve_per_bridge": get(cfg, "pricing.cost_to_serve_per_bridge")}
+    spec = [("guarantor_cover_pct", "Guarantor covers", "pct"), ("all_in_cap_pa", "All-in cap on the borrower, a year", "pct"),
+            ("guarantee_fee_pa", "Guarantee fee, a year", "pct"), ("cost_to_serve_per_bridge", "Cost to serve per loan (the DFI bears it)", "rm")]
+    near = lambda lst, v: min(range(len(lst)), key=lambda i: abs(lst[i] - (v or 0)))  # noqa: E731
+    ctl = []
+    for key, label, kind in spec:
+        lst = ax[key]; i = near(lst, cur[key])
+        ctl.append(f'<label><span>{esc(label)}</span><input type="range" id="rr_{key}" min="0" max="{len(lst)-1}" step="1" value="{i}" '
+                   f'aria-label="{esc(label)}"><output id="rro_{key}">{fmt(lst[i], kind)}</output></label>')
+    trs = "".join(f'<tr><td>{esc(lbl)}</td><td class="n" id="rrd_{dk}">—</td><td class="n" id="rrg_{gk or dk}">{"—" if gk else "n/a"}</td></tr>'
+                  for lbl, dk, gk, _ in RR_ROWS)
+    kinds = {(gk or dk): kind for _, dk, gk, kind in RR_ROWS} | {dk: kind for _, dk, gk, kind in RR_ROWS}
+    cells = {k: (None if v is None else _round_deep(v)) for k, v in rg["cells"].items()}
+    data = _json.dumps({"axes": ax, "kinds": kinds, "rows": [[dk, gk] for _, dk, gk, _ in RR_ROWS], "cells": cells}, separators=(",", ":"))
+    js = """
+(function(){var D=JSON.parse(document.getElementById('rgrid').textContent);
+var ax=['guarantor_cover_pct','all_in_cap_pa','guarantee_fee_pa','cost_to_serve_per_bridge'],kind={guarantor_cover_pct:'pct',all_in_cap_pa:'pct',guarantee_fee_pa:'pct',cost_to_serve_per_bridge:'rm'};
+function f(v,k){if(v===null||v===undefined)return '\u2014';if(k==='pct')return (v<0?'\\u2212':'')+(Math.abs(v)*100).toFixed(1)+'%';if(k==='ratio')return v.toFixed(2);var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:v!==0&&Math.abs(v)<10?1:0});return (v<0?'\u2212RM':'RM')+a;}
+function set(id,t){var e=document.getElementById(id);if(e)e.textContent=t;}
+function upd(){var key=ax.map(function(a){var i=+document.getElementById('rr_'+a).value;set('rro_'+a,f(D.axes[a][i],kind[a]));return i;}).join('|');
+var c=D.cells[key],note=document.getElementById('rrnote');
+D.rows.forEach(function(r){var k=D.kinds[r[1]||r[0]];set('rrd_'+r[0],c?f(c.dfi[r[0]],D.kinds[r[0]]):'\u2014');if(r[1])set('rrg_'+r[1],c&&c.guarantor?f(c.guarantor[r[1]],D.kinds[r[1]]):'\u2014');});
+if(!c){note.style.display='block';['sp','ga','ls','cc','cap','gap','gpl'].forEach(function(x){set('rrx_'+x,'\u2014');});return;}note.style.display='none';
+set('rrx_sp',f(c.loss_split.sponsor,'pct'));set('rrx_ga',f(c.loss_split.guarantor,'pct'));set('rrx_ls',f(c.loss_split.dfi,'pct'));
+set('rrx_cc',f(c.cost_covering_all_in_pa,'pct'));set('rrx_cap',f(c.all_in_cap_pa,'pct'));set('rrx_gap',f(c.gap_pa,'pct'));set('rrx_gpl',f(c.gap_per_loan,'rm'));}
+ax.forEach(function(a){document.getElementById('rr_'+a).addEventListener('input',upd);});upd();})();
+"""
+    return (
+        '<p class="note"><strong>Each party carries its own costs.</strong> The DFI pays interest on the debt that funds the loans, holds equity '
+        'against them, and bears the cost to serve. The guarantor sets its cap aside as capital for the length of a cohort and pays an admin cost per bridge. '
+        'The costs are <strong>demo placeholders</strong>, empty in the real template: the DFI and the guarantor must supply their own. '
+        'Return on capital is compared with each party\'s required return, and the gap is the spread it earns. Risk is shown as a bad group, the average of the '
+        'worst 5% of groups, and the chance of a loss-making group. The sponsor\'s reserve takes the first losses and is shown only for context.</p>'
+        f'<div class="sliders">{"".join(ctl)}</div>'
+        '<p id="rrnote" class="note" style="display:none;color:#b00">The guarantee fee is above the all-in cap here, so nothing is left for the DFI.</p>'
+        f'<div class="wrap"><table><thead><tr><th>Per group of loans</th><th>DFI</th><th>Guarantor</th></tr></thead><tbody>{trs}</tbody></table></div>'
+        '<h3>Who takes the credit loss, and what price covers every cost</h3>'
+        '<div class="wrap"><table><tbody>'
+        '<tr><td>Share of the credit loss: sponsor reserve / guarantor / DFI</td><td class="n"><span id="rrx_sp">—</span> / <span id="rrx_ga">—</span> / <span id="rrx_ls">—</span></td></tr>'
+        '<tr><td>All-in rate that would cover every cost (both break-even fees added)</td><td class="n" id="rrx_cc">—</td></tr>'
+        '<tr><td>All-in cap on the borrower</td><td class="n" id="rrx_cap">—</td></tr>'
+        '<tr><td>Gap: how far below cost the cap is, a year (+ = priced below cost)</td><td class="n" id="rrx_gap">—</td></tr>'
+        '<tr><td>The same gap per loan: what developmental pricing deliberately gives up</td><td class="n" id="rrx_gpl">—</td></tr>'
+        f'</tbody></table></div><script type="application/json" id="rgrid">{data}</script><script>{js}</script>')
+
+
+def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str, dev_grid=None, damage_grid=None, rr_grid=None) -> str:
     s = out["summary"]
     totals = [r.total_loss for r in out["runs"]]
     reserve = get(cfg, "layers.first_loss_reserve")
@@ -601,6 +678,8 @@ def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path:
                  "borrowers or customers behave.</p>", _binding_note(cfg), _slider_block(grid, cfg)]
     if dev_grid:
         body += ["<h2>Developmental pricing</h2>", _dev_block(dev_grid, cfg)]
+    if rr_grid:
+        body += ["<h2>Risk and return: the DFI and the guarantor</h2>", _rr_block(rr_grid, cfg)]
     if damage_grid:
         body += ["<h2>Damage rate and the loss trip wire</h2>", _damage_block(damage_grid, cfg)]
     body += ["<h2>Method and limits</h2>", "<ul>"

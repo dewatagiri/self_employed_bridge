@@ -18,7 +18,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import compliance, gates, report, simulate
+from . import compliance, gates, report, riskreturn, simulate
 from .config import ConfigIncomplete, ConfigInvalid, check_config, get, is_demo, layer_keys, load_config, require
 from .decide import decide, decide_variation
 from .models import Exposure, Job
@@ -135,12 +135,24 @@ def cmd_simulate(args, cfg):
                   f"  Sponsor reserve used RM{dev['sponsor_reserve_used_mean']:,.0f} per group",
                   f"  Planned programme cost (all funders) RM{dev['programme_cost_per_loan']:,.2f} per loan, "
                   f"RM{dev['programme_cost_per_1000_lent']:,.2f} per RM1,000 lent"]
+    rrb = riskreturn.rr_base(cfg, out["draws"])
+    if rrb:
+        d, g = rrb["dfi"], rrb["guarantor"]
+        lines += ["", "Risk and return, each party with its own costs (placeholders until the DFI and guarantor supply theirs):",
+                  f"  DFI        return on capital {d['return_on_capital_pa']:.1%} vs hurdle {d['hurdle']:.0%} (spread {d['spread']:+.1%}); "
+                  f"loss-making groups {d['p_loss']:.0%}; worst-5% average RM{d['es5']:,.0f}"]
+        if g:
+            lines.append(f"  Guarantor  return on capital {g['return_on_capital_pa']:.1%} vs hurdle {g['hurdle']:.0%} (spread {g['spread']:+.1%}); "
+                         f"loss-making groups {g['p_loss']:.0%}; worst-5% average RM{g['es5']:,.0f}")
+        lines.append(f"  Cost-covering all-in rate {rrb['cost_covering_all_in_pa']:.1%} a year vs cap {rrb['all_in_cap_pa']:.1%}: "
+                     f"gap {rrb['gap_pa']:+.1%} = RM{rrb['gap_per_loan']:,.2f} per loan")
     if args.out:
         sens = simulate.sensitivity(cfg, out["draws"])
         grid = simulate.slider_grid(cfg, out["draws"])
         dev_grid = simulate.dev_grid(cfg, out["draws"])
         damage_grid = simulate.damage_grid(cfg, out["draws"])
-        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid), encoding="utf-8")
+        rr_grid = riskreturn.rr_grid(cfg, out["draws"])
+        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid, rr_grid), encoding="utf-8")
         lines.append(f"Wrote {args.out}")
     _out(args, {"summary": s}, "\n".join(lines))
 
