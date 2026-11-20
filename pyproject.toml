@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "self_employed_bridge"
+version = "0.1.0"
+description = "Parametric engine for a job-linked materials bridge. Sensitivity tool, not a forecast."
+requires-python = ">=3.11"
+dependencies = ["pyyaml"]
+
+[project.scripts]
+bridge = "self_employed_bridge.cli:main"
+
+[project.optional-dependencies]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
