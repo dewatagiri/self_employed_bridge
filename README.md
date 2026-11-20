@@ -218,3 +218,8 @@ each source (A9); they are shown for comparison and never drive a decision.
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
 (open in a browser) · 141 tests (`pytest`).
+
+## Licence
+
+MIT. See [`LICENSE`](LICENSE). The demo numbers are made up and the code is a pilot design tool, so
+use it at your own risk. Not financial, investment or legal advice.
