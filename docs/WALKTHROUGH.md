@@ -129,13 +129,13 @@ the stop lines open and the engine will not invent them.
 
 ## 5. Going live: who sets what, in what order
 
-`bridge check-config config/params.template.yaml` lists 30 nulls that block live use. They fall to
+`bridge check-config config/params.template.yaml` lists the nulls that block live use. They fall to
 different owners. Suggested order, because each step depends on the one before:
 
 | # | Owner | Keys | Why this order |
 |---|---|---|---|
-| 1 | Legal | `financier.type`; the controlled-account open item; `market_reference` approval | Decides whether the product can run at all, and which fee rules apply. |
-| 2 | Risk / credit | `screen.*`, `release.*` (incl. `margin_of_advance`), `borrower.min_trade_months_or_jobs`, `caps.*`, `tenor.two_step_release_over_amount` | Who gets a bridge and how much. Needed before any release. |
+| 1 | Legal, with the DFI | `financier.type` (set: DFI, A1); the controlled-account open item; `market_reference` approval; `release.registration_waiver_first_bridge_max` (what the DFI's rules allow) | Decides whether the product can run at all, and which fee rules apply. |
+| 2 | Risk / credit | `screen.*`, `release.*` (incl. `margin_of_advance`), `borrower.min_trade_months_or_jobs`, `caps.*` (incl. `step_up_tiers`), `tenor.two_step_release_over_amount` | Who gets a bridge and how much. Needed before any release. |
 | 3 | Sponsor | `layers.first_loss_reserve` (and guarantor terms if one joins) | Sized against the cohort cap from step 2. |
 | 4 | Collections owner | `collections.*` | Days past due for each step and the write-off point. |
 | 5 | Pilot steering group | `gates.*`, `stop_lines.*` | **Set before cohort 1 data comes in**, so the pass marks are not fitted to the results. |

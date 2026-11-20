@@ -17,7 +17,8 @@
                ▼                                                ▼
 ┌──────────────────────────────────────────────────────────────────┐
 │ decide.py                                                        │
-│  checks: KYC · screening · payer identity · credit record ·      │
+│  checks: KYC · screening · payer identity · registration (small  │
+│  first bridge may be waived) · credit record · step-up tiers ·   │
 │  trade record · payer not related ·                              │
 │  deposit from payer's account · PDPA · supplier on panel ·       │
 │  one live bridge per job · borrower not blocked · live limit     │

@@ -23,5 +23,6 @@
   "variation_order_signed": null,
   "borrower_kyc_status": "verified",
   "screening_result": "clear",
-  "payer_identity_confirmed": true
+  "payer_identity_confirmed": true,
+  "borrower_registered": true
 }

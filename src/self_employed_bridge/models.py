@@ -32,6 +32,7 @@ class Job:
     borrower_kyc_status: Optional[str] = None        # verified | pending | failed
     screening_result: Optional[str] = None           # clear | possible_match | pep | true_match
     payer_identity_confirmed: Optional[bool] = None
+    borrower_registered: Optional[bool] = None       # business registration on file
 
     @classmethod
     def from_dict(cls, d: dict) -> "Job":
@@ -49,6 +50,8 @@ class Exposure:
     pilot_live_amount: float = 0.0
     live_job_ids: tuple[str, ...] = ()   # needed for the one-live-bridge-per-job rule
     borrower_blocked: bool = False       # set by collections after a bypass
+    borrower_prior_bridges: int = 0      # bridges released to this borrower before (0 = first bridge)
+    borrower_clean_repayments: int = 0   # bridges repaid on time, for the step-up tiers
 
     @classmethod
     def from_dict(cls, d: dict) -> "Exposure":

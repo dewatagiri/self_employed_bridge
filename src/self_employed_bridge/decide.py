@@ -38,6 +38,24 @@ def advance_limit(materials_cost: float, deposit_amount: float, cfg: dict) -> tu
     return limits[binding], need, binding
 
 
+def borrower_limits(exposure: Exposure, cfg: dict) -> tuple[float, float, int]:
+    """(max live bridges, per-borrower live cap, tier) after step-ups (author decision A11).
+
+    Tier 0 is the base caps. Each tier in `caps.step_up_tiers` applies once the borrower has that
+    many clean repayments. Tiers may only raise limits.
+    """
+    max_live = get(cfg, "caps.max_live_bridges_per_borrower")
+    cap = get(cfg, "caps.per_borrower_live")
+    tier = 0
+    tiers = sorted(get(cfg, "caps.step_up_tiers") or [], key=lambda t: t["after_clean_repayments"])
+    for i, t in enumerate(tiers, 1):
+        if t["max_live_bridges_per_borrower"] < max_live or t["per_borrower_live"] < cap:
+            raise ConfigInvalid(f"caps.step_up_tiers[{i}] lowers a limit; tiers may only step up.")
+        if exposure.borrower_clean_repayments >= t["after_clean_repayments"]:
+            max_live, cap, tier = t["max_live_bridges_per_borrower"], t["per_borrower_live"], i
+    return max_live, cap, tier
+
+
 def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
     require(cfg, DECIDE_REQUIRED)
     sc = screen(job, cfg)
@@ -84,8 +102,11 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
         blocks.append(Reason("BORROWER_BLOCKED", "New bridges are blocked for this borrower after a bypass."))
     if job.job_id in exposure.live_job_ids:
         declines.append(Reason("DUPLICATE_JOB", "A live bridge already exists for this job_id."))
-    if exposure.borrower_live_count >= get(cfg, "caps.max_live_bridges_per_borrower"):
-        blocks.append(Reason("LIVE_LIMIT", "Borrower is at the live-bridge limit."))
+    max_live, borrower_cap, tier = borrower_limits(exposure, cfg)
+    if tier:
+        flags.append(f"STEP_UP_TIER_{tier}")
+    if exposure.borrower_live_count >= max_live:
+        blocks.append(Reason("LIVE_LIMIT", f"Borrower is at the live-bridge limit ({max_live})."))
     if job.materials_list_match < get(cfg, "release.template_match_min"):
         manual.append(Reason("TEMPLATE_MISMATCH", "Invoice does not match the trade template."))
 
@@ -106,7 +127,7 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
     if binding == "margin_of_advance":
         flags.append("AMOUNT_LIMITED_BY_MARGIN_OF_ADVANCE")
     headrooms = {
-        "caps.per_borrower_live": get(cfg, "caps.per_borrower_live") - exposure.borrower_live_amount,
+        "caps.per_borrower_live": borrower_cap - exposure.borrower_live_amount,
         "caps.per_supplier_live": get(cfg, "caps.per_supplier_live") - exposure.supplier_live_amount,
         "caps.per_sponsor_cohort": get(cfg, "caps.per_sponsor_cohort") - exposure.cohort_live_amount,
         "caps.pilot_total": get(cfg, "caps.pilot_total") - exposure.pilot_live_amount,
@@ -121,6 +142,16 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
             flags.append("AMOUNT_LIMITED_BY_CAP")
         if job.invoice_amount < base and amount == job.invoice_amount:
             flags.append("AMOUNT_LIMITED_BY_INVOICE")
+
+    # Business registration (author decision A11): waived only for a small first bridge.
+    if get(cfg, "release.require_registration") and job.borrower_registered is not True:
+        waiver = get(cfg, "release.registration_waiver_first_bridge_max")
+        if exposure.borrower_prior_bridges == 0 and waiver is not None and 0 < amount <= waiver:
+            flags.append("REGISTRATION_WAIVED_FIRST_BRIDGE")
+        else:
+            why = ("only a first bridge can skip it" if exposure.borrower_prior_bridges else
+                   "no waiver is set" if waiver is None else f"the waiver covers a first bridge up to RM{waiver:,.2f}")
+            blocks.append(Reason("REGISTRATION_REQUIRED", f"Business registration is required: {why}."))
 
     if declines:
         return Decision("DECLINE", reasons=declines + blocks, flags=flags)
@@ -154,8 +185,9 @@ def decide_variation(job: Job, already_released: float, exposure: Exposure, cfg:
                         "The variation does not raise the materials cost.")])
     base, _, binding = advance_limit(job.invoice_amount, job.deposit_amount, cfg)
     extra = base - already_released
+    _, borrower_cap, _ = borrower_limits(exposure, cfg)
     headrooms = {
-        "caps.per_borrower_live": get(cfg, "caps.per_borrower_live") - exposure.borrower_live_amount,
+        "caps.per_borrower_live": borrower_cap - exposure.borrower_live_amount,
         "caps.per_supplier_live": get(cfg, "caps.per_supplier_live") - exposure.supplier_live_amount,
         "caps.per_sponsor_cohort": get(cfg, "caps.per_sponsor_cohort") - exposure.cohort_live_amount,
         "caps.pilot_total": get(cfg, "caps.pilot_total") - exposure.pilot_live_amount,

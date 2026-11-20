@@ -13,6 +13,8 @@ release:
   require_kyc_verified: true             # borrower eKYC result must be 'verified'
   require_payer_identity_confirmed: true
   margin_of_advance: 0.95   # DEMO ONLY, not a finding
+  require_registration: true             # author decision A11: business registration needed...
+  registration_waiver_first_bridge_max: 2000   # DEMO ONLY, not a finding
   auto_approve_max_amount: 5000         # DEMO ONLY, not a finding
   template_match_min: 0.8               # DEMO ONLY, not a finding
 caps:
@@ -22,6 +24,9 @@ caps:
   per_sponsor_cohort: 200000            # DEMO ONLY, not a finding
   pilot_total: 500000                   # DEMO ONLY, not a finding
   max_live_bridges_per_borrower: 2      # DEMO ONLY, not a finding
+  step_up_tiers:                        # author decision A11; tiers after clean repayments
+    - {after_clean_repayments: 3, max_live_bridges_per_borrower: 3, per_borrower_live: 25000}   # DEMO ONLY, not a finding
+    - {after_clean_repayments: 8, max_live_bridges_per_borrower: 4, per_borrower_live: 40000}   # DEMO ONLY, not a finding
 borrower:
   require_credit_bureau_check: true
   decline_on_adverse_record: true

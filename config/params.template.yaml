@@ -14,6 +14,8 @@ release:
   require_kyc_verified: true             # borrower eKYC result must be 'verified'
   require_payer_identity_confirmed: true
   margin_of_advance: null              # max bridge as a share of the quoted materials cost; never above 1.0
+  require_registration: true             # author decision A11: business registration needed...
+  registration_waiver_first_bridge_max: null  # ...except a first bridge at or below this (if the financier's rules allow); null = no waiver
   auto_approve_max_amount: null         # template jobs at or below this skip manual review
   template_match_min: null              # 0 to 1 match between quote materials list and trade template
 caps:                                   # exposure limits, all RM
@@ -23,6 +25,7 @@ caps:                                   # exposure limits, all RM
   per_sponsor_cohort: null
   pilot_total: null
   max_live_bridges_per_borrower: null
+  step_up_tiers: null                   # author decision A11: list of {after_clean_repayments, max_live_bridges_per_borrower, per_borrower_live}; null = no step-up
 borrower:
   require_credit_bureau_check: true
   decline_on_adverse_record: true

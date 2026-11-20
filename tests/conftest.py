@@ -28,7 +28,8 @@ def make_job():
                 supplier_on_panel=True, invoice_amount=5000, borrower_credit_flag="ok",
                 borrower_trade_months=24, borrower_completed_jobs=10, pdpa_consent=True,
                 sponsor_cohort="C1", variation_order_signed=None,
-                borrower_kyc_status="verified", screening_result="clear", payer_identity_confirmed=True)
+                borrower_kyc_status="verified", screening_result="clear", payer_identity_confirmed=True,
+                borrower_registered=True)
 
     def _make(**kw):
         return Job(**{**copy.deepcopy(base), **kw})

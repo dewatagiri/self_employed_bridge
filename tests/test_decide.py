@@ -165,3 +165,51 @@ def test_invoice_limit_flagged_as_invoice(make_job, demo, exposure):
 def test_headroom_limit_flagged_as_cap(make_job, demo):
     d = decide(make_job(), Exposure(borrower_live_amount=14000), demo)
     assert d.approved_amount == 1000 and "AMOUNT_LIMITED_BY_CAP" in d.flags
+
+
+# ---- author decision A11: registration waiver and step-up tiers ----
+
+def test_unregistered_first_bridge_over_waiver_blocked(make_job, demo, exposure):
+    d = decide(make_job(borrower_registered=None), exposure, demo)          # RM3,000 > demo waiver RM2,000
+    assert d.route == "BLOCKED" and d.reasons[0].code == "REGISTRATION_REQUIRED"
+
+
+def test_small_first_bridge_waives_registration(make_job, demo, exposure):
+    d = decide(make_job(borrower_registered=False, deposit_amount=3500), exposure, demo)   # bridge RM1,500
+    assert d.route == "RELEASE" and "REGISTRATION_WAIVED_FIRST_BRIDGE" in d.flags
+
+
+def test_waiver_only_for_first_bridge(make_job, demo):
+    d = decide(make_job(borrower_registered=False, deposit_amount=3500), Exposure(borrower_prior_bridges=1), demo)
+    assert d.route == "BLOCKED" and "only a first bridge" in d.reasons[0].text
+
+
+def test_no_waiver_when_null(make_job, demo, exposure):
+    demo["release"]["registration_waiver_first_bridge_max"] = None
+    assert decide(make_job(borrower_registered=False, deposit_amount=3500), exposure, demo).route == "BLOCKED"
+    demo["release"]["require_registration"] = False
+    assert decide(make_job(borrower_registered=False), exposure, demo).route == "RELEASE"
+
+
+def test_step_up_raises_live_limit(make_job, demo):
+    assert decide(make_job(), Exposure(borrower_live_count=2), demo).route == "BLOCKED"          # base limit 2
+    d = decide(make_job(), Exposure(borrower_live_count=2, borrower_clean_repayments=3), demo)
+    assert d.route == "RELEASE" and "STEP_UP_TIER_1" in d.flags
+
+
+def test_step_up_raises_borrower_cap(make_job, demo):
+    assert decide(make_job(), Exposure(borrower_live_amount=14000), demo).approved_amount == 1000
+    d = decide(make_job(), Exposure(borrower_live_amount=14000, borrower_clean_repayments=8), demo)
+    assert d.approved_amount == 3000 and "STEP_UP_TIER_2" in d.flags
+
+
+def test_step_up_tiers_cannot_lower_limits(make_job, demo, exposure):
+    from self_employed_bridge.config import ConfigInvalid
+    demo["caps"]["step_up_tiers"][0]["per_borrower_live"] = 1000
+    with pytest.raises(ConfigInvalid):
+        decide(make_job(), exposure, demo)
+
+
+def test_no_step_up_when_null(make_job, demo):
+    demo["caps"]["step_up_tiers"] = None
+    assert decide(make_job(), Exposure(borrower_live_count=2, borrower_clean_repayments=50), demo).route == "BLOCKED"

@@ -17,6 +17,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A8 | 20 Nov 2026 | The simulator draws each job's materials cost and deposit, then sizes the bridge with the live rule. | Confirms D22 (departs from handover §6.7 wording on purpose). |
 | A9 | 20 Nov 2026 | Market references stay pending until the author's team has opened each source. | `market_reference.approved_by_author: false`; the report keeps the PENDING label. |
 | A10 | 20 Nov 2026 | Fee ceiling stays at 1.5% a month, resting on two sources: the public scheme charge (author to confirm the product) and the top of the market invoice financing range. | `pricing.fee_ceiling_reference.sources` lists both. Warning only; the fee is never derived from it. |
+| A11 | 20 Nov 2026 | Build both article ideas: (1) business registration required, waived only for a borrower's first bridge at or below a set amount; (2) live-bridge limit and borrower cap step up after clean repayments. | `release.require_registration`, `release.registration_waiver_first_bridge_max` (null = no waiver), `caps.step_up_tiers` (null = no step-up; tiers may only raise limits). Inputs: `Job.borrower_registered`, `Exposure.borrower_prior_bridges`, `Exposure.borrower_clean_repayments`. Null leaves the strict default, so nothing loosens until the financier and risk team set the numbers. |
 
 ## Interpretations made in the build
 
@@ -64,6 +65,14 @@ here so it can be confirmed or reversed. Nothing below is a finding.
    `approved_by_author: true`.
 7. The fee-ceiling reference (1.5% a month): kept, on two sources (A10). The author's team confirms which
    product of the public scheme carries the 1.5% charge.
+
+## What the demo run shows (demo values, not findings)
+
+- Above a 90% margin of advance nothing changes: every simulated deposit is at least 10% of materials,
+  so the bridge never needs more. The deposit, not the margin, sets the bridge size.
+- The demo fee (RM60) puts the borrower at about 2.2% a month, above the market's 0.8–1.5%, and above
+  the fee-ceiling reference. The simulated break-even flat fee is about RM35 (about 1.3% a month), which
+  is where "slightly better than market" becomes possible, if cost to serve holds.
 
 ## What the demo run shows (demo values, not findings)
 

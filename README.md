@@ -16,7 +16,7 @@ a bridge log. **Every limit, rate and threshold is a parameter. Nothing is hard-
 
 ```bash
 pip install -e ".[dev]"
-python -m pytest                                    # 115 tests
+python -m pytest                                    # 123 tests
 
 bridge check-config config/params.template.yaml     # what must be set before live use (exit 1)
 bridge screen  data/example_job.json --config config/params.demo.yaml
