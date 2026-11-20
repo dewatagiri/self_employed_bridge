@@ -16,6 +16,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A7 | 20 Nov 2026 | Bypass cure path: the block lifts only after the bypassed amount is repaid in full into the controlled account and a named officer approves. A second bypass blocks for the rest of the pilot. | Replaces D12. `collections.approve_cure`; `blocked_borrowers` applies both rules. |
 | A8 | 20 Nov 2026 | The simulator draws each job's materials cost and deposit, then sizes the bridge with the live rule. | Confirms D22 (departs from handover §6.7 wording on purpose). |
 | A9 | 20 Nov 2026 | Market references stay pending until the author's team has opened each source. | `market_reference.approved_by_author: false`; the report keeps the PENDING label. |
+| A10 | 20 Nov 2026 | Fee ceiling stays at 1.5% a month, resting on two sources: the public scheme charge (author to confirm the product) and the top of the market invoice financing range. | `pricing.fee_ceiling_reference.sources` lists both. Warning only; the fee is never derived from it. |
 
 ## Interpretations made in the build
 
@@ -61,9 +62,8 @@ here so it can be confirmed or reversed. Nothing below is a finding.
    (standing flag on every `decide`).
 6. The `market_reference` sources: the author's team opens each one (A9), keeps or drops it, then sets
    `approved_by_author: true`.
-7. The fee-ceiling reference (1.5% a month): the public source found during the build ties that rate
-   to a factoring product, and the build found no confirmation for contract financing. Please re-check
-   the source named in handover §10.
+7. The fee-ceiling reference (1.5% a month): kept, on two sources (A10). The author's team confirms which
+   product of the public scheme carries the 1.5% charge.
 
 ## What the demo run shows (demo values, not findings)
 

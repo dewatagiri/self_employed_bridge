@@ -36,8 +36,11 @@ pricing:
   guarantee_fee_rate_on_drawn: 0.02     # DEMO ONLY, not a finding
   cost_to_serve_per_bridge: 25          # DEMO ONLY, not a finding
   fee_ceiling_reference:
-    rate_per_month: 0.015
+    rate_per_month: 0.015               # author decision A10: two sources give the same figure
     note: "Not like-for-like. A fee well above it needs a stated reason."
+    sources:
+      - "public contract financing scheme charge, 1.5% a month (handover s.10; author to confirm the product)"
+      - "top of the market invoice financing range, 0.8-1.5% a month (market_reference, pending A9)"
 layers:
   first_loss_reserve: 10000             # DEMO ONLY, not a finding
   guarantor_enabled: true               # DEMO ONLY, not a finding

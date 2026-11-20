@@ -37,8 +37,11 @@ pricing:
   guarantee_fee_rate_on_drawn: null     # annual rate, charged on drawn amount only
   cost_to_serve_per_bridge: null        # RM, measured in the pilot
   fee_ceiling_reference:                # published benchmark, used only as a warning
-    rate_per_month: 0.015               # contract financing, 1.5% a month (public, Oct 2026)
+    rate_per_month: 0.015               # author decision A10: two sources give the same figure
     note: "Not like-for-like. A fee well above it needs a stated reason."
+    sources:
+      - "public contract financing scheme charge, 1.5% a month (handover s.10; author to confirm the product)"
+      - "top of the market invoice financing range, 0.8-1.5% a month (market_reference, pending A9)"
 layers:
   first_loss_reserve: null              # RM, sponsor-funded, per cohort
   guarantor_enabled: true               # author decision, 20 Nov 2026: a guarantee provider covers part of the loss
