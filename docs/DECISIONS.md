@@ -10,6 +10,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A1 | 20 Nov 2026 | A development financial institution funds the bridges; a guarantee provider guarantees them. | `financier.type: development_institution` (compliance returns `CHECK_REQUIRED` for legal; moneylender caps do not apply). `layers.guarantor_enabled: true`, so guarantor cover and cap must be set before live use. |
 | A2 | 20 Nov 2026 | Bridge size: the whole deposit counts against materials first; the bridge covers only the gap (confirms D1). | `screen.deposit_to_materials_share: 1.0`. Moving to a partial share later is a config change. |
 | A3 | 20 Nov 2026 | First-loss reserve is one pool per sponsor cohort, not a slice per borrower. | Confirms the build: `allocate_pool` shares the reserve across a cohort; gates measure all-cohort loss against one reserve per cohort (D16). |
+| A4 | 20 Nov 2026 | The borrower pays the guarantee fee on drawn amounts, on top of the flat fee; it passes to the guarantor. | Confirms D25 option one. Break-even flat fee = cost to serve + expected financier loss. The alternative figure is removed from the report. |
 
 ## Interpretations made in the build
 
@@ -39,7 +40,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | D22 | `simulate.py` | `amount_distribution` draws the **materials cost** of each job, with `deposit_share_of_materials`; the bridge amount comes from `advance_limit`, the live rule. | §6.7 says "draw amounts". Drawing materials lets margin of advance, deposit offset and caps act in the simulation exactly as in `decide`. |
 | D23 | config | Added `tenor.typical_days` (the guarantee fee needs a tenor). `tenor.grace_days` is not used by any module yet. | §4 has no tenor length. |
 | D24 | `simulate.py` | Bypass stop line: bypass rate to date, tested once `stop_lines.bypass_rate_min_bridges` are out (new key). | A rate over 1 bridge is meaningless; the minimum is a pilot setting, not a guess. |
-| D25 | `simulate.py` | The guarantee fee is paid by the borrower and passed to the guarantor. Break-even flat fee = cost to serve + expected financier loss; the report also shows it with the guarantee fee added, for the case where the financier pays it. | `bridge_revenue` (§6.4) charges both fees, while `breakeven_fee` adds the guarantee fee; both readings are shown. |
+| D25 | `simulate.py` | The guarantee fee is paid by the borrower and passed to the guarantor. Break-even flat fee = cost to serve + expected financier loss. | Confirmed by the author (A4). |
 | D26 | `simulate.py` | Sensitivity: bypass ±25% moves the difference to or from on-time; recovery ±25% scales every outcome except on-time (repaid in full), capped at 100%; same random draws for every case. | One input at a time, no noise. |
 | D27 | `simulate.py` | "Reserve exhausted" = a cohort's total loss reaches the reserve. `caps.per_sponsor_cohort` stops releases within a cohort. | Direct reading of §6.7. |
 | D28 | `report.py` | White page only, no dark mode. | Ground rule 7. |

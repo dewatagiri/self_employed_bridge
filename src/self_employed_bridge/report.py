@@ -426,8 +426,8 @@ def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path:
         "<h2>Key results</h2>",
         table(["", "Value"], [
             ["Financier net result per bridge", _rm(s["financier_net_per_bridge"])],
-            ["Break-even flat fee (covers cost to serve + expected financier loss)", _rm(s["breakeven_flat_fee"])],
-            ["…if the financier pays the guarantee fee out of the flat fee", _rm(s["breakeven_flat_fee_if_financier_pays_guarantee"])],
+            ["Break-even flat fee (covers cost to serve + expected financier loss; the borrower pays the guarantee fee on top)",
+             _rm(s["breakeven_flat_fee"])],
             ["Chance the first-loss reserve is used up", fmt(s["p_reserve_exhausted"], "pct")],
             ["Chance the guarantor cap is hit", fmt(s["p_guarantor_cap_hit"], "pct")],
             ["Cohorts paused by the bypass stop line", fmt(s["p_paused"], "pct") +

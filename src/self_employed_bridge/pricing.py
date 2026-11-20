@@ -18,7 +18,11 @@ def bridge_revenue(amount: float, tenor_days: float, cfg: dict) -> float:
 
 
 def breakeven_fee(expected_loss_to_financier: float, cost_to_serve: float, guarantee_fee_amt: float) -> float:
-    """Flat fee that covers cost to serve, the guarantee fee and expected financier loss."""
+    """Flat fee that covers cost to serve, the guarantee fee and expected financier loss.
+
+    Under author decision A4 the borrower pays the guarantee fee on top and it passes to the guarantor,
+    so callers pass `guarantee_fee_amt=0` for the financier's break-even.
+    """
     return cost_to_serve + guarantee_fee_amt + expected_loss_to_financier
 
 

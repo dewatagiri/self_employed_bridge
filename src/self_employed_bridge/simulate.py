@@ -10,7 +10,7 @@ One run = one cohort:
      bypass rate to date exceeds `pause_if_bypass_rate_over`; record the pause point;
   4. allocate losses with `allocate_pool` (reserve shared across the cohort);
   5. financier result = flat fees - cost to serve - financier loss. The guarantee fee is charged
-     to the borrower on drawn amounts and passed to the guarantor.
+     to the borrower on drawn amounts and passed to the guarantor (author decision A4).
 
 Random draws are made once per run and reused across scenarios (common random numbers), so a
 difference between scenarios comes from the parameter, not from noise.
@@ -181,10 +181,9 @@ def summarise(runs: list[Run], cfg: dict) -> dict:
         "advance_share_of_materials": released / (sum(r.materials for r in runs) or 1.0),
         "expected_financier_loss_per_bridge": exp_fin_loss,
         "financier_net_per_bridge": sum(r.financier_net for r in runs) / bridges,
-        # flat fee that covers cost to serve + expected financier loss (guarantee fee paid by borrower)
+        # flat fee that covers cost to serve + expected financier loss. The borrower pays the guarantee
+        # fee on top and it passes to the guarantor (author decision A4), so it is not in this figure.
         "breakeven_flat_fee": breakeven_fee(exp_fin_loss, cts, 0.0),
-        # if instead the financier pays the guarantee fee out of the flat fee
-        "breakeven_flat_fee_if_financier_pays_guarantee": breakeven_fee(exp_fin_loss, cts, gfee_pb),
         # borrower's all-in cost per month on the average bridge, for comparison with market rates
         "borrower_monthly_cost": (flat + gfee_pb) / (released / bridges) / months,
     }
