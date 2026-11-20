@@ -8,6 +8,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | # | Date | Decision | Effect in the engine |
 |---|---|---|---|
 | A1 | 20 Nov 2026 | A development financial institution funds the bridges; a guarantee provider guarantees them. | `financier.type: development_institution` (compliance returns `CHECK_REQUIRED` for legal; moneylender caps do not apply). `layers.guarantor_enabled: true`, so guarantor cover and cap must be set before live use. |
+| A2 | 20 Nov 2026 | Bridge size: the whole deposit counts against materials first; the bridge covers only the gap (confirms D1). | `screen.deposit_to_materials_share: 1.0`. Moving to a partial share later is a config change. |
 
 ## Interpretations made in the build
 
@@ -44,7 +45,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 
 ## Open items for the author (not guessed)
 
-1. Bridge need formula (D1) versus a plain cap at materials cost.
+1. ~~Bridge need formula (D1) versus a plain cap at materials cost.~~ Decided (A2).
 2. Reserve shared across a cohort (assumed) or held per borrower.
 3. ~~Which financier types are in the pilot.~~ Decided (A1).
 4. Real thresholds for stop lines and gates, and every null in `params.template.yaml`

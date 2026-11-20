@@ -5,7 +5,7 @@ screen:
   allowed_payer_types: [household, individual, small_business]
   refer_contract_payer_types: [company, agency, glc]
   min_materials_share_of_quote: 0.25    # DEMO ONLY, not a finding
-  deposit_to_materials_share: 1.0       # DEMO ONLY, not a finding
+  deposit_to_materials_share: 1.0       # author decision A2, 20 Nov 2026
 release:
   require_deposit_from_payer_account: true
   require_payer_not_related: true

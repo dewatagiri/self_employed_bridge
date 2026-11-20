@@ -6,7 +6,7 @@ screen:
   allowed_payer_types: [household, individual, small_business]
   refer_contract_payer_types: [company, agency, glc]   # go to contract or invoice financing
   min_materials_share_of_quote: null    # Q2: materials_cost / quote_total must be at least this
-  deposit_to_materials_share: null      # share of the deposit treated as applied to materials
+  deposit_to_materials_share: 1.0       # author decision A2, 20 Nov 2026: the whole deposit counts first
 release:
   require_deposit_from_payer_account: true
   require_payer_not_related: true
