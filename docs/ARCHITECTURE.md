@@ -66,6 +66,21 @@ live decision uses. The report's sliders look results up in the precomputed grid
 never disagree with the engine. A test checks that the grid cell at the base settings equals the
 full simulation.
 
+## Developmental pricing
+
+```
+ all-in cap on the borrower ─▶ guarantee fee (to the guarantor) + financier fee (the rest)
+        │
+        ├─ financier result  = financier fee − cost to serve − financier loss
+        ├─ guarantor result  = guarantee fee − guarantor draws
+        ├─ sponsor           = first-loss reserve used
+        └─ PROGRAMME COST    = what all three lose together  ◀── the price of additionality
+                                  │
+   pilot log ─▶ gate 4 (new to formal credit, job needed the bridge) ─▶ cost per fully additional borrower
+```
+
+Priced below cost on purpose (A13). The engine reports the cost and measures what it buys; it never assumes additionality.
+
 ## Staff page
 
 ```

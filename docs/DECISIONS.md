@@ -19,6 +19,7 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A10 | 20 Nov 2026 | Fee ceiling stays at 1.5% a month, resting on two sources: the public scheme charge (author to confirm the product) and the top of the market invoice financing range. | `pricing.fee_ceiling_reference.sources` lists both. Warning only; the fee is never derived from it. |
 | A11 | 20 Nov 2026 | Build both article ideas: (1) business registration required, waived only for a borrower's first bridge at or below a set amount; (2) live-bridge limit and borrower cap step up after clean repayments. | `release.require_registration`, `release.registration_waiver_first_bridge_max` (null = no waiver), `caps.step_up_tiers` (null = no step-up; tiers may only raise limits). Inputs: `Job.borrower_registered`, `Exposure.borrower_prior_bridges`, `Exposure.borrower_clean_repayments`. Null leaves the strict default, so nothing loosens until the financier and risk team set the numbers. |
 | A12 | 20 Nov 2026 | Build a staff page so people can use the engine (option 2 of 3), beyond handover §8's "no front end beyond the HTML report". | `bridge serve`: local page on 127.0.0.1, standard library only, SQLite record (`bridge.db`). Pure `ledger.py` derives exposure, layers left and the gates log from the record. No payments, no contact with anyone. |
+| A13 | 20 Nov 2026 | **Developmental pricing.** If the product runs at the borrower's all-in charge cap, it is priced below a commercial return on purpose. The funders know they will lose money and accept it in return for additionality. | `development.pricing_basis: developmental`. The simulation report shows the planned loss (counting every funder, sponsor reserve included) with sliders, never a "return" claim. Additionality is measured, not assumed: gate 4 and two answers recorded at release. `pricing.all_in_rate_cap_pa` and `development.funder_loss_budget_per_cohort` are settings, null in the template. |
 
 ## Interpretations made in the build
 
@@ -52,6 +53,12 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | D26 | `simulate.py` | Sensitivity: bypass ±25% moves the difference to or from on-time; recovery ±25% scales every outcome except on-time (repaid in full), capped at 100%; same random draws for every case. | One input at a time, no noise. |
 | D27 | `simulate.py` | "Reserve exhausted" = a cohort's total loss reaches the reserve. `caps.per_sponsor_cohort` stops releases within a cohort. | Direct reading of §6.7. |
 | D28 | `report.py` | White page only, no dark mode. | Ground rule 7. |
+| D29 | `simulate.py` | The all-in cap is read as 1.5% a month = 18% a year, simple interest, covering the financier fee and the guarantee fee together. Financier fee = cap − guarantee fee, on the drawn amount over `tenor.typical_days`. | From the author's brief ("1.5% incl. financing charges and guarantee fees, that's 18% pa"). Matches the fee-ceiling reference and the moneylender unsecured cap; legal to confirm how a DFI product is treated. |
+| D30 | `simulate.py` | **Programme cost** = DFI + guarantor + the sponsor's first-loss reserve that was used. The **funders' loss budget** covers the DFI and guarantor only; the sponsor's reserve is pre-funded. | Counting the reserve stops a DFI surplus hiding a programme loss (a 60% cap shows both). |
+| D31 | `simulate.py` | The financier's return is before its cost of funds. | The engine has no funding-cost number and none is invented. Subtract it by hand. |
+| D32 | `gates.py` | Gate 4 **Additionality**: two answers recorded at release, "new to formal credit" and "says the job would not go ahead without the bridge". A borrower is *fully additional* when both are true. Pass marks are `gates.gate4_*`, null. Not asked counts as unknown, never as no. | The article leaves additionality open; this measures it from the pilot instead of assuming it. |
+| D33 | `simulate.py` | "Cost per additional borrower" in the report is an **illustration** over 25/50/75/100% additional, not a finding. | The real share comes from gate 4. |
+| D34 | `pricing.py` | The fee rule is unchanged: a recommended fee comes from cost to serve plus expected loss, never from a rate. The developmental view is a stress test at a given cap, not a fee recommendation. Break-even stays the benchmark that shows how far below cost the product is priced. | Ground rule on pricing; developmental pricing departs from break-even on purpose, so the gap must stay visible. |
 
 ## Open items for the author (not guessed)
 
@@ -66,6 +73,10 @@ here so it can be confirmed or reversed. Nothing below is a finding.
    `approved_by_author: true`.
 7. The fee-ceiling reference (1.5% a month): kept, on two sources (A10). The author's team confirms which
    product of the public scheme carries the 1.5% charge.
+
+8. The **funders' loss budget per cohort** (`development.funder_loss_budget_per_cohort`): the DFI and the guarantor agree what they can lose.
+9. The **all-in cap** (`pricing.all_in_rate_cap_pa`) and whether a DFI product at 18% a year all-in is treated as the author expects. Legal to confirm.
+10. The DFI's **cost of funds**, and what counts as "additional" (definition and the `gates.gate4_*` pass marks).
 
 ## What the demo run shows (demo values, not findings)
 

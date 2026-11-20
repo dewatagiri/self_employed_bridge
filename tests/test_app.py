@@ -131,3 +131,32 @@ def test_template_config_shows_missing_settings(template, tmp_path):
         assert "Settings missing" in body and "caps.per_bridge" in body
     finally:
         httpd.shutdown(); httpd.server_close()
+
+
+def test_additionality_answers_flow_to_the_log(server):
+    port, app = server
+    call(port, "POST", "/decide", example_form())
+    call(port, "POST", "/release", {"job_id": "J-0001", "supplier_paid_directly": "on",
+                                    "new_to_formal_credit": "yes", "would_not_proceed": ""})
+    call(port, "POST", "/bridge", {"id": "BR00001", "action": "payment", "value": "3000"})
+    rec = app.store.record("BR00001")
+    assert rec["new_to_formal_credit"] == 1 and rec["would_not_proceed"] is None
+    _, _, csv_text = call(port, "GET", "/log.csv")
+    header, row = csv_text.strip().splitlines()[:2]
+    cols = header.split(",")
+    vals = row.split(",")
+    assert vals[cols.index("new_to_formal_credit")] == "True" and vals[cols.index("would_not_proceed_without_bridge")] == ""
+
+
+def test_old_database_is_migrated(tmp_path):
+    import sqlite3
+    from self_employed_bridge.store import Store
+    p = str(tmp_path / "old.db")
+    db = sqlite3.connect(p)
+    db.executescript("""CREATE TABLE bridges (bridge_id TEXT PRIMARY KEY, job_id TEXT NOT NULL, borrower_id TEXT NOT NULL,
+      supplier_id TEXT NOT NULL, cohort TEXT NOT NULL, released_date TEXT NOT NULL, closed_date TEXT, quote_hours REAL,
+      supplier_paid_directly INTEGER NOT NULL, fee REAL NOT NULL, cost REAL NOT NULL, tranches TEXT NOT NULL, live TEXT NOT NULL);""")
+    db.commit(); db.close()
+    st = Store(p)
+    cols = {r["name"] for r in st.db.execute("PRAGMA table_info(bridges)")}
+    assert {"new_to_formal_credit", "would_not_proceed"} <= cols

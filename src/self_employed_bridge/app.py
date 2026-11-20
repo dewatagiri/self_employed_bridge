@@ -196,6 +196,9 @@ Open item: {esc(controlled_account_flag()["message"])}</footer></body></html>"""
 <input type="hidden" name="job_id" value="{esc(job.job_id)}">
 <label>Hours from quote to supplier payment<input type="number" step="any" name="quote_hours"></label>
 <label class="check"><input type="checkbox" name="supplier_paid_directly" checked> Supplier was paid directly</label>
+<label>Borrower is new to formal credit<select name="new_to_formal_credit"><option value="">not asked</option><option value="yes">yes</option><option value="no">no</option></select></label>
+<label>Borrower says the job would not go ahead without the bridge<select name="would_not_proceed"><option value="">not asked</option><option value="yes">yes</option><option value="no">no</option></select></label>
+<p class="note" style="grid-column:1/-1">Developmental pricing: these two answers measure who the bridge reaches. Leave "not asked" rather than guess.</p>
 <div><button type="submit">Record release</button></div></form>"""
         body += f'<p><a href="/job?job_id={urllib.parse.quote(job.job_id)}">Edit this job and decide again</a></p>'
         return self.layout(f"Decision for job {job.job_id}", body)
@@ -309,6 +312,8 @@ Open item: {esc(controlled_account_flag()["message"])}</footer></body></html>"""
             "cohort": job.sponsor_cohort, "released_date": self.today(), "closed_date": None,
             "quote_hours": float(hours) if hours else None,
             "supplier_paid_directly": form.get("supplier_paid_directly") == "on",
+            "new_to_formal_credit": {"yes": True, "no": False}.get(form.get("new_to_formal_credit", "")),
+            "would_not_proceed": {"yes": True, "no": False}.get(form.get("would_not_proceed", "")),
             "fee": get(self.cfg, "pricing.flat_fee_per_bridge"), "cost": get(self.cfg, "pricing.cost_to_serve_per_bridge"),
             "tranches": d.tranches, "live": LiveBridge(bid, job.job_id, job.borrower_id, d.approved_amount)})
         self.store.log_decision(job.job_id, "release", d, self.today())

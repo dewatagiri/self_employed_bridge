@@ -40,6 +40,7 @@ pricing:
   flat_fee_per_bridge: 60               # DEMO ONLY, not a finding
   guarantee_fee_rate_on_drawn: 0.02     # DEMO ONLY, not a finding
   cost_to_serve_per_bridge: 25          # DEMO ONLY, not a finding
+  all_in_rate_cap_pa: 0.18   # DEMO ONLY, not a finding
   fee_ceiling_reference:
     rate_per_month: 0.015               # author decision A10: two sources give the same figure
     note: "Not like-for-like. A fee well above it needs a stated reason."
@@ -71,6 +72,8 @@ gates:
   gate2_max_bypass_rate: null
   gate2_max_loss_to_reserve: null
   gate3_min_fee_cover_ratio: null
+  gate4_min_new_to_credit_share: null
+  gate4_min_job_needed_share: null
 simulation:
   n_bridges: 100                        # DEMO ONLY, not a finding
   n_runs: 1000                          # DEMO ONLY, not a finding
@@ -83,6 +86,14 @@ sliders:                                # values the report precomputes for its 
   margin_of_advance: [0.80, 0.85, 0.90, 0.95, 1.00]   # DEMO ONLY, not a finding
   flat_fee_per_bridge: [30, 45, 60, 75, 90]   # DEMO ONLY, not a finding
   first_loss_reserve: [5000, 7500, 10000, 15000, 20000]   # DEMO ONLY, not a finding
+development:
+  pricing_basis: developmental          # author decision A13
+  funder_loss_budget_per_cohort: 2000   # DEMO ONLY, not a finding
+dev_sliders:
+  all_in_cap_pa: [0.12, 0.15, 0.18, 0.21]   # DEMO ONLY, not a finding
+  guarantee_fee_pa: [0.02, 0.035, 0.05, 0.07]   # DEMO ONLY, not a finding
+  guarantor_cover_pct: [0.5, 0.6, 0.7, 0.8]   # DEMO ONLY, not a finding
+  cost_to_serve_per_bridge: [5, 10, 15, 25, 35]   # DEMO ONLY, not a finding
 market_reference:                       # public, dated; comparison only, never used in a decision
   approved_by_author: false             # flip to true once the author has checked each source
   margin_of_advance:                    # market products measure it against contract or invoice value

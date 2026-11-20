@@ -14,6 +14,10 @@ from .config import get
 from .models import Bridge, Exposure
 
 
+def _opt(v) -> Optional[bool]:
+    return None if v is None else bool(v)
+
+
 def is_open(rec: dict) -> bool:
     return rec["live"].state not in CLOSED
 
@@ -72,5 +76,7 @@ def log_rows(records: list[dict]) -> list[Bridge]:
             customer_paid_into_controlled_account=out in ("on_time", "late"),
             repaid_date=r["closed_date"] if b.state != WRITTEN_OFF else None, outcome=out,
             loss_amount=b.loss or 0.0, cost_to_serve=r["cost"], fee_charged=r["fee"],
-            quote_to_supplier_payment_hours=r["quote_hours"], sponsor_cohort=r["cohort"]))
+            quote_to_supplier_payment_hours=r["quote_hours"], sponsor_cohort=r["cohort"],
+            new_to_formal_credit=_opt(r.get("new_to_formal_credit")),
+            would_not_proceed_without_bridge=_opt(r.get("would_not_proceed"))))
     return rows

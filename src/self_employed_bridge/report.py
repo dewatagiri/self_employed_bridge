@@ -82,7 +82,8 @@ def page(title: str, config_path: str, demo: bool, body: str, synthetic: bool = 
 # ---------- gates ----------
 
 METRIC_KIND = {"share_deposit_below_materials": "pct", "share_supplier_direct_and_controlled_account": "pct",
-               "on_time_share": "pct", "bypass_rate": "pct", "loss_to_reserve": "ratio", "fee_cover_ratio": "ratio"}
+               "on_time_share": "pct", "bypass_rate": "pct", "loss_to_reserve": "ratio", "fee_cover_ratio": "ratio",
+               "share_new_to_formal_credit": "pct", "share_job_needed_bridge": "pct"}
 MEASURE_ROWS = [
     ("bridges", "Bridges", "num"), ("jobs_completed", "Jobs completed", "num"),
     ("on_time_share", "Share repaid on time", "pct"), ("total_loss", "Total loss", "rm"),
@@ -91,6 +92,9 @@ MEASURE_ROWS = [
     ("hours_quote_to_supplier_max", "Hours quote → supplier payment (max)", "num"),
     ("share_within_target_hours", "Share within target hours", "pct"),
     ("cost_to_serve_per_bridge", "Cost to serve per bridge", "rm"),
+    ("share_new_to_formal_credit", "Borrowers new to formal credit", "pct"),
+    ("share_job_needed_bridge", "Borrowers who say the job needed the bridge", "pct"),
+    ("cost_per_fully_additional_borrower", "Funders' cost per fully additional borrower", "rm"),
 ]
 
 
@@ -401,7 +405,75 @@ ax.forEach(function(a){document.getElementById('s_'+a).addEventListener('input',
             f'<script type="application/json" id="grid">{data}</script><script>{js}</script>')
 
 
-def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str) -> str:
+def _dev_block(dev_grid: dict, cfg: dict) -> str:
+    """Developmental pricing section (A13): the planned loss the funders accept, with sliders over a precomputed grid."""
+    ax = dev_grid["axes"]
+    cur = {"guarantor_cover_pct": get(cfg, "layers.guarantor_cover_pct"), "all_in_cap_pa": get(cfg, "pricing.all_in_rate_cap_pa"),
+           "guarantee_fee_pa": get(cfg, "pricing.guarantee_fee_rate_on_drawn"),
+           "cost_to_serve_per_bridge": get(cfg, "pricing.cost_to_serve_per_bridge")}
+    spec = [("guarantor_cover_pct", "Guarantor covers", "pct"), ("all_in_cap_pa", "All-in cap on the borrower, a year", "pct"),
+            ("guarantee_fee_pa", "Guarantee fee, a year", "pct"), ("cost_to_serve_per_bridge", "Cost to serve per loan", "rm")]
+
+    def near(lst, v):
+        return min(range(len(lst)), key=lambda i: abs(lst[i] - (v or 0)))
+    ctl = []
+    for key, label, kind in spec:
+        lst = ax[key]; i = near(lst, cur[key])
+        ctl.append(f'<label><span>{esc(label)}</span><input type="range" id="dv_{key}" min="0" max="{len(lst)-1}" step="1" '
+                   f'value="{i}" aria-label="{esc(label)}"><output id="dvo_{key}">{fmt(lst[i], kind)}</output></label>')
+    rows = [("borrower_per_loan", "Borrower pays per loan, all-in", "rm"),
+            ("guarantee_fee_per_loan", "…of which guarantee fee (to the guarantor)", "rm"),
+            ("financier_fee_per_loan", "…of which financier fee", "rm"),
+            ("financier_net_mean", "Financier net per group (mean)", "rm"),
+            ("financier_net_p5", "Financier net, bad group (p5)", "rm"),
+            ("financier_return_pa", "Financier net return a year on drawn, before funding cost", "pct"),
+            ("guarantor_net_mean", "Guarantor net per group (mean)", "rm"),
+            ("guarantor_return_pa", "Guarantor net return a year on drawn", "pct"),
+            ("funders_net_mean", "DFI + guarantor combined net per group", "rm"),
+            ("sponsor_reserve_used_mean", "Sponsor's first-loss reserve used per group", "rm"),
+            ("programme_net_mean", "Whole programme net per group (DFI + guarantor + sponsor)", "rm"),
+            ("programme_cost_per_loan", "Planned programme cost per loan (+ = a loss)", "rm"),
+            ("programme_cost_per_1000_lent", "Planned programme cost per RM1,000 lent", "rm"),
+            ("p_group_loses", "Chance the DFI and guarantor lose money in a group", "pct"),
+            ("p_over_budget", "Chance the DFI + guarantor loss is above the agreed budget", "pct"),
+            ("breakeven_cost_to_serve", "Cost to serve at which the financier alone breaks even", "rm"),
+            ("cost_per_additional_loan_100", "Cost per additional loan if all borrowers are additional (illustration)", "rm"),
+            ("cost_per_additional_loan_50", "…if half are (illustration)", "rm"),
+            ("cost_per_additional_loan_25", "…if a quarter are (illustration)", "rm")]
+    trs = "".join(f'<tr><td>{esc(lbl)}</td><td class="n" id="dr_{k}">—</td></tr>' for k, lbl, _ in rows)
+    idx = {}
+    n_a, n_g, n_s = len(ax["all_in_cap_pa"]), len(ax["guarantee_fee_pa"]), len(ax["cost_to_serve_per_bridge"])
+    cells = {k: (None if v is None else {n: (None if x is None else round(x, 4)) for n, x in v.items()})
+             for k, v in dev_grid["cells"].items()}
+    data = _json.dumps({"axes": ax, "kinds": {k: kind for k, _, kind in rows}, "cells": cells,
+                        "budget": dev_grid["budget"]}, separators=(",", ":"))
+    js = """
+(function(){var D=JSON.parse(document.getElementById('dgrid').textContent);
+var ax=['guarantor_cover_pct','all_in_cap_pa','guarantee_fee_pa','cost_to_serve_per_bridge'],kind={guarantor_cover_pct:'pct',all_in_cap_pa:'pct',guarantee_fee_pa:'pct',cost_to_serve_per_bridge:'rm'};
+function f(v,k){if(v===null||v===undefined)return '\u2014';if(k==='pct')return (v*100).toFixed(1)+'%';var a=Math.abs(v).toLocaleString('en-MY',{maximumFractionDigits:v!==0&&Math.abs(v)<10?1:0});return (v<0?'\u2212RM':'RM')+a;}
+function upd(){var key=ax.map(function(a){var i=+document.getElementById('dv_'+a).value;document.getElementById('dvo_'+a).textContent=f(D.axes[a][i],kind[a]);return i;}).join('|');
+var c=D.cells[key];var note=document.getElementById('dnote');
+if(!c){note.style.display='block';for(var k in D.kinds){document.getElementById('dr_'+k).textContent='\u2014';}return;}
+note.style.display='none';for(var k in D.kinds){document.getElementById('dr_'+k).textContent=f(c[k],D.kinds[k]);}}
+ax.forEach(function(a){document.getElementById('dv_'+a).addEventListener('input',upd);});upd();})();
+"""
+    budget = dev_grid["budget"]
+    return (
+        '<div class="banner syn" style="border-color:#13263a;color:#13263a">DEVELOPMENTAL PRICING: this product is priced below a commercial '
+        "return on purpose. The funders accept a planned loss in return for additionality.</div>"
+        '<p class="note">The DFI and the guarantor knowingly price at or below cost to reach borrowers the market does not serve. '
+        "This section shows that planned loss, counting every funder including the sponsor's reserve: it is the price, not a forecast. It assumes <strong>no</strong> additionality; whether the bridge "
+        "reaches new-to-credit borrowers and unlocks jobs is measured in the pilot (gate 4), and the cost per additional borrower below is an "
+        "illustration across shares, not a finding. The borrower's all-in charge is capped: financier fee + guarantee fee ≤ the cap, charged on "
+        "the drawn amount, simple interest."
+        + (f" Funders' loss budget per cohort: {_rm(budget)}." if budget is not None else " No loss budget is set yet.") + "</p>"
+        f'<div class="sliders">{"".join(ctl)}</div>'
+        '<p id="dnote" class="note" style="display:none;color:#b00">The guarantee fee is above the all-in cap, so nothing is left for the financier. Choose a lower guarantee fee or a higher cap.</p>'
+        f'<div class="wrap"><table><thead><tr><th>Result</th><th>Value</th></tr></thead><tbody>{trs}</tbody></table></div>'
+        f'<script type="application/json" id="dgrid">{data}</script><script>{js}</script>')
+
+
+def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str, dev_grid=None) -> str:
     s = out["summary"]
     totals = [r.total_loss for r in out["runs"]]
     reserve = get(cfg, "layers.first_loss_reserve")
@@ -472,6 +544,8 @@ def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path:
                  '<p class="note">Each position was simulated in advance by the same engine, on the same draws. '
                  "Margin of advance changes bridge size only: with no data, the engine assumes it does not change how "
                  "borrowers or customers behave.</p>", _binding_note(cfg), _slider_block(grid, cfg)]
+    if dev_grid:
+        body += ["<h2>Developmental pricing</h2>", _dev_block(dev_grid, cfg)]
     body += ["<h2>Method and limits</h2>", "<ul>"
              "<li>One run is one sponsor cohort. Each job draws a materials cost and a deposit; the bridge amount uses the "
              "same rule as the live release decision, and stops at the cohort cap.</li>"

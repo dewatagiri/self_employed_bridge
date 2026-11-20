@@ -48,3 +48,24 @@ def test_no_sliders_without_grid(built):
 
 def test_money_format():
     assert report.fmt(-8400, "rm") == "−RM8,400" and report.fmt(900, "rm") == "RM900"
+
+
+def test_developmental_section(built):
+    cfg, out, sens, grid = built
+    dev = sim.dev_grid(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", dev)
+    assert "DEVELOPMENTAL PRICING" in h and "priced below a commercial return on purpose" in h
+    assert "assumes <strong>no</strong> additionality" in h
+    assert h.count("<svg") == 3 and "https://" not in h and "http://" not in h
+    import json, re
+    data = json.loads(re.search(r'<script type="application/json" id="dgrid">(.*?)</script>', h).group(1))
+    assert len(data["cells"]) == 4 * 4 * 4 * 5 and data["budget"] == 2000
+    assert "programme_cost_per_loan" in next(c for c in data["cells"].values() if c)
+
+
+def test_developmental_section_hidden_without_sliders(built):
+    cfg, out, sens, grid = built
+    cfg["dev_sliders"]["all_in_cap_pa"] = None
+    assert sim.dev_grid(cfg, out["draws"]) is None
+    h = report.render_simulation(out, sens, grid, cfg, "x", None)
+    assert "DEVELOPMENTAL PRICING" not in h

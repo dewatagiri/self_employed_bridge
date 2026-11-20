@@ -19,8 +19,11 @@ CREATE TABLE IF NOT EXISTS bridges (
   bridge_id TEXT PRIMARY KEY, job_id TEXT NOT NULL, borrower_id TEXT NOT NULL, supplier_id TEXT NOT NULL,
   cohort TEXT NOT NULL, released_date TEXT NOT NULL, closed_date TEXT, quote_hours REAL,
   supplier_paid_directly INTEGER NOT NULL, fee REAL NOT NULL, cost REAL NOT NULL,
-  tranches TEXT NOT NULL, live TEXT NOT NULL);
+  tranches TEXT NOT NULL, live TEXT NOT NULL,
+  new_to_formal_credit INTEGER, would_not_proceed INTEGER);
 """
+# Columns added after the first release; older bridge.db files get them on open.
+MIGRATIONS = [("bridges", "new_to_formal_credit", "INTEGER"), ("bridges", "would_not_proceed", "INTEGER")]
 
 
 def _live_to_json(b: LiveBridge) -> str:
@@ -34,6 +37,11 @@ def _live_from_json(s: str) -> LiveBridge:
     return LiveBridge(**d)
 
 
+def _tri(v):
+    """True/False/None to 1/0/None for SQLite."""
+    return None if v is None else int(bool(v))
+
+
 class Store:
     def __init__(self, path: str):
         # The staff page serves one request at a time (http.server.HTTPServer), so one shared
@@ -41,6 +49,11 @@ class Store:
         self.db = sqlite3.connect(path, check_same_thread=False)
         self.db.row_factory = sqlite3.Row
         self.db.executescript(SCHEMA)
+        for table, col, typ in MIGRATIONS:
+            have = {r["name"] for r in self.db.execute(f"PRAGMA table_info({table})")}
+            if col not in have:
+                self.db.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
+        self.db.commit()
 
     # jobs
     def save_job(self, job: Job, now: str) -> None:
@@ -72,10 +85,15 @@ class Store:
 
     def add_bridge(self, rec: dict) -> None:
         self.db.execute(
-            "INSERT INTO bridges VALUES (:bridge_id, :job_id, :borrower_id, :supplier_id, :cohort, :released_date, "
-            ":closed_date, :quote_hours, :supplier_paid_directly, :fee, :cost, :tranches, :live)",
-            rec | {"tranches": json.dumps(rec["tranches"]), "live": _live_to_json(rec["live"]),
-                   "supplier_paid_directly": int(bool(rec["supplier_paid_directly"]))})
+            "INSERT INTO bridges (bridge_id, job_id, borrower_id, supplier_id, cohort, released_date, closed_date, "
+            "quote_hours, supplier_paid_directly, fee, cost, tranches, live, new_to_formal_credit, would_not_proceed) "
+            "VALUES (:bridge_id, :job_id, :borrower_id, :supplier_id, :cohort, :released_date, :closed_date, "
+            ":quote_hours, :supplier_paid_directly, :fee, :cost, :tranches, :live, :new_to_formal_credit, :would_not_proceed)",
+            {"new_to_formal_credit": None, "would_not_proceed": None} | rec
+            | {"tranches": json.dumps(rec["tranches"]), "live": _live_to_json(rec["live"]),
+               "supplier_paid_directly": int(bool(rec["supplier_paid_directly"])),
+               "new_to_formal_credit": _tri(rec.get("new_to_formal_credit")),
+               "would_not_proceed": _tri(rec.get("would_not_proceed"))})
         self.db.commit()
 
     def update_bridge(self, bridge_id: str, live: LiveBridge, closed_date: Optional[str]) -> None:

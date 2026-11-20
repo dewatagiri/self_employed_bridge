@@ -125,10 +125,21 @@ def cmd_simulate(args, cfg):
               f"Guarantor cap hit          {s['p_guarantor_cap_hit']:.1%} of cohorts",
               f"Paused by bypass stop line {s['p_paused']:.1%} of cohorts",
               f"Borrower cost a month      {s['borrower_monthly_cost']:.2%}"]
+    dev = simulate.dev_base(cfg, out["draws"])
+    if dev:
+        lines += ["", "Developmental pricing (priced below a commercial return on purpose; additionality is measured in the pilot):",
+                  f"  Borrower all-in cap {get(cfg, 'pricing.all_in_rate_cap_pa'):.1%} a year = RM{dev['borrower_per_loan']:,.1f} per loan "
+                  f"(guarantee fee RM{dev['guarantee_fee_per_loan']:,.1f}, financier fee RM{dev['financier_fee_per_loan']:,.1f})",
+                  f"  Financier net RM{dev['financier_net_mean']:,.0f} per group = {dev['financier_return_pa']:.1%} a year on drawn, before funding cost",
+                  f"  Guarantor net RM{dev['guarantor_net_mean']:,.0f} per group = {dev['guarantor_return_pa']:.1%} a year on drawn",
+                  f"  Sponsor reserve used RM{dev['sponsor_reserve_used_mean']:,.0f} per group",
+                  f"  Planned programme cost (all funders) RM{dev['programme_cost_per_loan']:,.2f} per loan, "
+                  f"RM{dev['programme_cost_per_1000_lent']:,.2f} per RM1,000 lent"]
     if args.out:
         sens = simulate.sensitivity(cfg, out["draws"])
         grid = simulate.slider_grid(cfg, out["draws"])
-        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config), encoding="utf-8")
+        dev_grid = simulate.dev_grid(cfg, out["draws"])
+        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid), encoding="utf-8")
         lines.append(f"Wrote {args.out}")
     _out(args, {"summary": s}, "\n".join(lines))
 

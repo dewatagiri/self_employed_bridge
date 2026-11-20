@@ -282,3 +282,96 @@ def slider_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
                     "borrower_monthly_cost": (fee + gfee_pb) / (released / bridges) / months,
                 }
     return {"margin_of_advance": moas, "flat_fee_per_bridge": fees, "first_loss_reserve": reserves, "cells": cells}
+
+
+# ---------- developmental pricing (author decision A13) ----------
+#
+# The product is priced below a commercial return on purpose. The funders (the DFI and the guarantor)
+# accept a planned loss in return for additionality: reaching borrowers the market does not serve.
+# This section works out what that planned loss is. It does not claim a return, and it does not assume
+# any additionality: how many borrowers are truly additional is measured in the pilot (see gates.py).
+#
+# All-in charge to the borrower, per annum, simple interest = financier fee + guarantee fee <= all_in_rate_cap_pa.
+# Financier fee = cap - guarantee fee, charged on the drawn amount over the tenor.
+# Funders' budget covers the DFI and guarantor. Programme cost adds the sponsor's reserve that was used.
+
+ADDITIONAL_SHARES = (0.25, 0.5, 0.75, 1.0)    # illustration only: what if this share of borrowers were truly additional?
+
+
+def dev_cell(runs: list[Run], cfg: dict, cap_pa: float, gfee_pa: float, cts: float,
+             budget: Optional[float] = None) -> Optional[dict]:
+    """Results for one setting of the all-in cap, guarantee fee and cost to serve.
+
+    `runs` already carry the loss split for one guarantor cover, so cover is chosen by which runs you pass.
+    Returns None when the guarantee fee alone is above the all-in cap (nothing is left for the financier).
+    """
+    fin_fee_pa = cap_pa - gfee_pa
+    if fin_fee_pa < 0:
+        return None
+    tenor = get(cfg, "tenor.typical_days")
+    yrs = [r.released * tenor / 365 for r in runs]
+    n = statistics.fmean(r.n_released for r in runs) or 1.0
+    ey = statistics.fmean(yrs) or 1.0
+    fin = [fin_fee_pa * y - cts * r.n_released - r.financier_loss for y, r in zip(yrs, runs)]
+    gua = [gfee_pa * y - r.guarantor for y, r in zip(yrs, runs)]
+    both = [a + b for a, b in zip(fin, gua)]
+    # Programme cost counts every funder: financier + guarantor + the sponsor's first-loss reserve that was used.
+    prog = [b - r.first_loss for b, r in zip(both, runs)]
+    released = statistics.fmean(r.released for r in runs) or 1.0
+    cost_pg = -statistics.fmean(prog)                      # + = the programme loses this much per group
+    cell = {
+        "borrower_per_loan": cap_pa * released / n * tenor / 365,
+        "guarantee_fee_per_loan": gfee_pa * released / n * tenor / 365,
+        "financier_fee_per_loan": fin_fee_pa * released / n * tenor / 365,
+        "financier_net_mean": statistics.fmean(fin), "financier_net_p5": pct(fin, 5),
+        "financier_return_pa": statistics.fmean(fin) / ey, "financier_return_pa_p5": pct(fin, 5) / ey,
+        "guarantor_net_mean": statistics.fmean(gua), "guarantor_return_pa": statistics.fmean(gua) / ey,
+        "funders_net_mean": statistics.fmean(both),                 # DFI + guarantor
+        "sponsor_reserve_used_mean": statistics.fmean(r.first_loss for r in runs),
+        "programme_net_mean": statistics.fmean(prog),               # DFI + guarantor + sponsor reserve
+        "programme_cost_per_loan": cost_pg / n,
+        "programme_cost_per_1000_lent": cost_pg / released * 1000,
+        "p_group_loses": sum(x < 0 for x in both) / len(both),
+        "p_over_budget": None if budget is None else sum(-x > budget for x in both) / len(both),  # DFI + guarantor only
+        "breakeven_cost_to_serve": None,
+    }
+    # cost to serve at which the financier alone just breaks even, from the same runs
+    base = statistics.fmean(fin) + cts * n
+    cell["breakeven_cost_to_serve"] = max(0.0, base / n)
+    for sh in ADDITIONAL_SHARES:     # on the whole programme cost, sponsor included
+        cell[f"cost_per_additional_loan_{int(sh*100)}"] = (cost_pg / n / sh) if cost_pg > 0 else 0.0
+    return cell
+
+
+def dev_base(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
+    """The developmental view at the config's own settings, or None while the cap is unset."""
+    cap = get(cfg, "pricing.all_in_rate_cap_pa")
+    if cap is None:
+        return None
+    require(cfg, ["pricing.guarantee_fee_rate_on_drawn", "pricing.cost_to_serve_per_bridge"])
+    runs = [run_cohort(d, cfg) for d in draws]
+    return dev_cell(runs, cfg, cap, get(cfg, "pricing.guarantee_fee_rate_on_drawn"),
+                    get(cfg, "pricing.cost_to_serve_per_bridge"), get(cfg, "development.funder_loss_budget_per_cohort"))
+
+
+def dev_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
+    """Precompute developmental results over the `dev_sliders` values for the report's sliders.
+
+    One simulation per guarantor cover; cap, guarantee fee and cost to serve are arithmetic on those runs.
+    Cells are keyed by slider position (cover|cap|guarantee fee|cost to serve).
+    """
+    sl = {k: get(cfg, f"dev_sliders.{k}") for k in ("guarantor_cover_pct", "all_in_cap_pa", "guarantee_fee_pa", "cost_to_serve_per_bridge")}
+    if not all(sl.values()):
+        return None
+    budget = get(cfg, "development.funder_loss_budget_per_cohort")
+    cells = {}
+    for ci, cover in enumerate(sl["guarantor_cover_pct"]):
+        c = copy.deepcopy(cfg)
+        c["layers"]["guarantor_cover_pct"] = cover
+        c["layers"]["guarantor_enabled"] = True
+        runs = [run_cohort(d, c) for d in draws]
+        for ai, cap in enumerate(sl["all_in_cap_pa"]):
+            for gi, g in enumerate(sl["guarantee_fee_pa"]):
+                for si, cts in enumerate(sl["cost_to_serve_per_bridge"]):
+                    cells[f"{ci}|{ai}|{gi}|{si}"] = dev_cell(runs, c, cap, g, cts, budget)
+    return {"axes": sl, "cells": cells, "budget": budget}

@@ -48,8 +48,8 @@ def test_waterfall_null_reserve(capsys):
 def test_gates_writes_offline_html(capsys, tmp_path, template):
     out_file = tmp_path / "gates.html"
     code, out, _ = run(capsys, "gates", LOG, "--config", DEMO, "--jobs", JOBS, "--out", str(out_file))
-    gate_lines = [ln for ln in out.splitlines() if ln[:2] in ("0 ", "1 ", "2 ", "3 ")]
-    assert code == 0 and len(gate_lines) == 4 and all(ln.endswith("NO_THRESHOLD_SET") for ln in gate_lines)
+    gate_lines = [ln for ln in out.splitlines() if ln[:2] in ("0 ", "1 ", "2 ", "3 ", "4 ")]
+    assert code == 0 and len(gate_lines) == 5 and all(ln.endswith("NO_THRESHOLD_SET") for ln in gate_lines)
     assert "SYNTHETIC" in out
     h = out_file.read_text()
     assert "DEMO PARAMETERS" in h and "SYNTHETIC DATA" in h
@@ -86,3 +86,15 @@ def test_simulate_writes_report(capsys, tmp_path, monkeypatch):
 def test_simulate_refuses_template(capsys):
     code, _, err = run(capsys, "simulate", "--config", TEMPLATE)
     assert code == 2 and "simulation.outcome_probs" in err
+
+
+def test_simulate_prints_developmental_lines(capsys, tmp_path):
+    import yaml
+    cfg = yaml.safe_load(open(DEMO)); cfg["simulation"]["n_runs"] = 100
+    small = tmp_path / "s.yaml"; small.write_text(yaml.safe_dump(cfg))
+    code, out, _ = run(capsys, "simulate", "--config", str(small))
+    assert code == 0 and "Developmental pricing" in out and "Planned programme cost" in out and "Sponsor reserve used" in out
+    cfg["pricing"]["all_in_rate_cap_pa"] = None
+    small.write_text(yaml.safe_dump(cfg))
+    code, out, _ = run(capsys, "simulate", "--config", str(small))
+    assert code == 0 and "Developmental pricing" not in out

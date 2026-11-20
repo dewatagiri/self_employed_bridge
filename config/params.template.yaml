@@ -39,6 +39,7 @@ pricing:
   flat_fee_per_bridge: null             # RM
   guarantee_fee_rate_on_drawn: null     # annual rate, charged on drawn amount only
   cost_to_serve_per_bridge: null        # RM, measured in the pilot
+  all_in_rate_cap_pa: null              # max the borrower pays in total (financier fee + guarantee fee), per annum, simple interest
   fee_ceiling_reference:                # published benchmark, used only as a warning
     rate_per_month: 0.015               # author decision A10: two sources give the same figure
     note: "Not like-for-like. A fee well above it needs a stated reason."
@@ -70,6 +71,8 @@ gates:                                  # pass thresholds, not in the design; le
   gate2_max_bypass_rate: null
   gate2_max_loss_to_reserve: null       # loss / first-loss reserve
   gate3_min_fee_cover_ratio: null       # fee collected / (cost to serve + loss)
+  gate4_min_new_to_credit_share: null   # additionality: share of borrowers new to formal credit
+  gate4_min_job_needed_share: null      # additionality: share who say the job would not go ahead without the bridge
 simulation:
   n_bridges: null
   n_runs: null
@@ -82,6 +85,14 @@ sliders:                                # values the report precomputes for its 
   margin_of_advance: null
   flat_fee_per_bridge: null
   first_loss_reserve: null
+development:
+  pricing_basis: developmental          # author decision A13: priced below a commercial return on purpose; funders accept a planned loss in return for additionality
+  funder_loss_budget_per_cohort: null   # RM the DFI and guarantor together agree they can lose per cohort; null = no budget set yet
+dev_sliders:                            # values the developmental-pricing section precomputes; null = section hidden
+  all_in_cap_pa: null
+  guarantee_fee_pa: null
+  guarantor_cover_pct: null
+  cost_to_serve_per_bridge: null
 market_reference:                       # public, dated; comparison only, never used in a decision
   approved_by_author: false             # flip to true once the author has checked each source
   margin_of_advance:                    # market products measure it against contract or invoice value

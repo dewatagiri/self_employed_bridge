@@ -5,6 +5,7 @@ config (`gates.*`) and stays null until set. A null threshold gives NO_THRESHOLD
     Gate 1 Mechanics    share of bridges with supplier paid directly AND customer paid into the controlled account
     Gate 2 Performance  share repaid on time from the customer's payment; bypass rate; loss against reserve
     Gate 3 Economics    fee collected against cost to serve plus loss
+    Gate 4 Additionality  who the bridge reached (developmental pricing): new to formal credit, job needed it
 
 Rule from the design: a second cohort may start only if cohort 1 is PASS on gates 1 and 2.
 """
@@ -169,6 +170,34 @@ def gate3(rows: list[Bridge], cfg: dict) -> GateResult:
         "net_per_bridge": (fee - cost - loss) / n})
 
 
+def _share_asked(rows: list[Bridge], field: str) -> tuple[Optional[float], int]:
+    """Share of True among rows where the question was asked, and how many were asked."""
+    asked = [getattr(b, field) for b in rows if getattr(b, field) is not None]
+    return (sum(asked) / len(asked) if asked else None), len(asked)
+
+
+def gate4(rows: list[Bridge], cfg: dict) -> GateResult:
+    """Additionality (developmental pricing, A13). The funders accept a planned loss; this measures what it buys.
+
+    Two shares, each over the borrowers who were asked: new to formal credit, and says the job would not
+    have gone ahead without the bridge. A borrower counts as fully additional when both are true. Pass marks
+    come from `gates.gate4_*` and stay null until set.
+    """
+    new, n_new = _share_asked(rows, "new_to_formal_credit")
+    need, n_need = _share_asked(rows, "would_not_proceed_without_bridge")
+    both = [b for b in rows if b.new_to_formal_credit and b.would_not_proceed_without_bridge]
+    net = sum(b.fee_charged - b.cost_to_serve - b.loss_amount for b in rows)
+    cost = max(0.0, -net)
+    checks = [
+        _check("share_new_to_formal_credit", new, get(cfg, "gates.gate4_min_new_to_credit_share"), "min"),
+        _check("share_job_needed_bridge", need, get(cfg, "gates.gate4_min_job_needed_share"), "min"),
+    ]
+    return GateResult(4, "Additionality", new, checks[0].threshold, _combine(checks), checks, {
+        "asked_new_to_credit": n_new, "asked_job_needed": n_need, "fully_additional_borrowers": len(both),
+        "programme_net_total": net, "programme_cost_total": cost,
+        "cost_per_fully_additional_borrower": (cost / len(both)) if both else None})
+
+
 def measures(rows: list[Bridge], cfg: dict, n_cohorts: int = 1) -> dict:
     """The measures the design asks for in every cohort."""
     n = len(rows)
@@ -189,12 +218,15 @@ def measures(rows: list[Bridge], cfg: dict, n_cohorts: int = 1) -> dict:
         "hours_quote_to_supplier_max": max(hours) if hours else None,
         "share_within_target_hours": _share(sum(h <= target for h in hours), len(hours)) if target else None,
         "cost_to_serve_per_bridge": _share(sum(b.cost_to_serve for b in rows), n),
+        "share_new_to_formal_credit": _share_asked(rows, "new_to_formal_credit")[0],
+        "share_job_needed_bridge": _share_asked(rows, "would_not_proceed_without_bridge")[0],
+        "cost_per_fully_additional_borrower": gate4(rows, cfg).detail["cost_per_fully_additional_borrower"],
     }
 
 
 def score(rows: list[Bridge], cfg: dict, jobs: Optional[list[Job]] = None, n_cohorts: int = 1) -> dict:
     """Score one group of bridges. `n_cohorts` is how many first-loss reserves stand behind them."""
-    return {"gates": [gate0(jobs, cfg), gate1(rows, cfg), gate2(rows, cfg, n_cohorts), gate3(rows, cfg)],
+    return {"gates": [gate0(jobs, cfg), gate1(rows, cfg), gate2(rows, cfg, n_cohorts), gate3(rows, cfg), gate4(rows, cfg)],
             "measures": measures(rows, cfg, n_cohorts)}
 
 

@@ -199,6 +199,21 @@ invoice value, often against collateral. This bridge advances against the quoted
 collateral. The market figures sit in `market_reference`, marked pending until the author's team checks
 each source (A9); they are shown for comparison and never drive a decision.
 
+## Developmental pricing
+
+If the borrower's all-in charge is capped (for example 1.5% a month, 18% a year, guarantee fee included), the
+product may sit **below cost**. That is a choice, not a mistake: the DFI and guarantor knowingly accept a
+planned loss in return for **additionality**, reaching borrowers the market does not serve (decision A13).
+
+- The simulation report has a **Developmental pricing** section with sliders for the guarantor's cover, the
+  all-in cap, the guarantee fee and the cost to serve. It shows each party's result and the **planned programme
+  cost** per loan and per RM1,000 lent, counting the sponsor's reserve too. It claims no return.
+- The cost buys something only if the bridge reaches the right people, so that is **measured, not assumed**.
+  Gate 4 uses two answers recorded at release (on the staff page): is the borrower new to formal credit, and
+  does the borrower say the job would not have gone ahead without the bridge.
+- `pricing.all_in_rate_cap_pa` and `development.funder_loss_budget_per_cohort` are settings, empty in the
+  template until the DFI and guarantor agree them. The financier's return is before its cost of funds.
+
 ## Honest limitations
 
 - **No loss data.** The dashboard is a what-if tool. It shows which settings matter, not what will happen.
@@ -217,7 +232,7 @@ each source (A9); they are shown for comparison and never drive a decision.
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 141 tests (`pytest`).
+(open in a browser) · 161 tests (`pytest`).
 
 ## Licence
 

@@ -93,3 +93,6 @@ class Bridge:
     fee_charged: float
     quote_to_supplier_payment_hours: float
     sponsor_cohort: str = ""
+    # Additionality (developmental pricing, A13). Recorded at release; None means not asked.
+    new_to_formal_credit: Optional[bool] = None            # borrower had no formal credit before this bridge
+    would_not_proceed_without_bridge: Optional[bool] = None  # borrower says the job would not have gone ahead
