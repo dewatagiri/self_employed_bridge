@@ -47,6 +47,35 @@ def test_above_auto_limit_manual(make_job, demo, exposure):
     assert d.tranches == [8000, 1000]
 
 
+def test_variation_signed_at_release_raises_materials(make_job, demo, exposure):
+    d = decide(make_job(invoice_amount=6500, variation_order_signed=True), exposure, demo)
+    assert d.approved_amount == 4500 and d.review_level == "manual"      # 6,500 - 2,000 deposit
+    assert d.reasons[0].code == "VARIATION_SIGNED" and d.payee == "S1"
+
+
+def test_variation_top_up_on_live_bridge(make_job, demo):
+    from self_employed_bridge.decide import decide_variation
+    live = Exposure(borrower_live_amount=3000, borrower_live_count=1, supplier_live_amount=3000,
+                    cohort_live_amount=3000, pilot_live_amount=3000, live_job_ids=("J1",))
+    job = make_job(invoice_amount=6500, variation_order_signed=True)
+    d = decide_variation(job, 3000, live, demo)
+    assert d.route == "RELEASE_VARIATION" and d.approved_amount == 1500
+    assert d.review_level == "manual" and d.payee == "S1"
+    assert decide_variation(make_job(invoice_amount=6500), 3000, live, demo).route == "BLOCKED"
+    assert decide_variation(job, 3000, Exposure(borrower_blocked=True), demo).route == "BLOCKED"
+    assert decide_variation(make_job(variation_order_signed=True), 3000, live, demo).route == "NO_TOP_UP_NEEDED"
+
+
+def test_variation_top_up_respects_caps(make_job, demo):
+    from self_employed_bridge.decide import decide_variation
+    demo["caps"]["per_bridge"] = 4000                     # total bridge never above RM4,000
+    job = make_job(invoice_amount=6500, variation_order_signed=True)
+    d = decide_variation(job, 3000, Exposure(borrower_live_amount=3000), demo)
+    assert d.approved_amount == 1000 and "AMOUNT_LIMITED_BY_CAP" in d.flags
+    d = decide_variation(job, 3000, Exposure(borrower_live_amount=14500), demo)
+    assert d.approved_amount == 500                         # borrower cap RM15,000
+
+
 def test_variation_unsigned_manual(make_job, demo, exposure):
     d = decide(make_job(invoice_amount=6000), exposure, demo)
     assert d.approved_amount == 3000 and d.review_level == "manual"

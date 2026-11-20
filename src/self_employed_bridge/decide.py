@@ -3,7 +3,8 @@
 Interpretations to confirm with the author (open item 1):
 - need = max(0, materials_cost - deposit_amount * deposit_to_materials_share)
 - approved = min(need, materials_cost, invoice_amount, per_bridge, every cap headroom)
-- Never above the quoted materials cost, even when a variation order is signed.
+- Never above the materials cost. A variation order signed by the payer raises that cost to the
+  varied total (author decision A5); an unsigned one does not. Either way a named officer reviews it.
 - margin_of_advance caps the bridge at that share of the quoted materials cost (at most 1.0).
 - KYC: the engine reads the provider's results; it does not verify identity itself.
 - Hard-check failures give DECLINE (adverse record, related payer, duplicate job) or BLOCKED.
@@ -88,17 +89,20 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
     if job.materials_list_match < get(cfg, "release.template_match_min"):
         manual.append(Reason("TEMPLATE_MISMATCH", "Invoice does not match the trade template."))
 
-    # Variation order: anything above the quoted materials cost needs a signed change.
+    # Variation order: anything above the quoted materials cost needs the payer's signed change.
+    materials = job.materials_cost
     if job.invoice_amount > job.materials_cost:
         if job.variation_order_signed is True:
-            flags.append("VARIATION_SIGNED_EXTRA_NOT_BRIDGED")
+            materials = job.invoice_amount            # the varied materials total
+            manual.append(Reason("VARIATION_SIGNED",
+                f"Payer signed a variation: materials RM{job.materials_cost:,.2f} -> RM{materials:,.2f}."))
         else:
             manual.append(Reason("VARIATION_UNSIGNED",
                 f"Invoice exceeds quoted materials by RM{job.invoice_amount - job.materials_cost:,.2f}; "
                 "extra blocked until the payer signs a change."))
 
     # Amount.
-    base, need, binding = advance_limit(job.materials_cost, job.deposit_amount, cfg)
+    base, need, binding = advance_limit(materials, job.deposit_amount, cfg)
     if binding == "margin_of_advance":
         flags.append("AMOUNT_LIMITED_BY_MARGIN_OF_ADVANCE")
     headrooms = {
@@ -107,7 +111,7 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
         "caps.per_sponsor_cohort": get(cfg, "caps.per_sponsor_cohort") - exposure.cohort_live_amount,
         "caps.pilot_total": get(cfg, "caps.pilot_total") - exposure.pilot_live_amount,
     }
-    amount = min(base, job.materials_cost, job.invoice_amount, *headrooms.values())
+    amount = min(base, materials, job.invoice_amount, *headrooms.values())
     amount = max(0.0, amount)
     if amount <= 0 and need > 0:
         full = [k for k, v in headrooms.items() if v <= 0]
@@ -131,3 +135,40 @@ def decide(job: Job, exposure: Exposure, cfg: dict) -> Decision:
     return Decision("RELEASE", approved_amount=amount, review_level="auto" if auto else "manual",
                     reasons=manual or [Reason("ALL_CHECKS_PASSED", "All checks passed.")],
                     flags=flags, payee=job.supplier_id, tranches=tranches)
+
+
+def decide_variation(job: Job, already_released: float, exposure: Exposure, cfg: dict) -> Decision:
+    """Top-up on a live bridge after the payer signs a variation order (author decision A5).
+
+    `job` carries the varied materials total in `invoice_amount`. `exposure` already includes the
+    live bridge. The top-up is the new bridge size minus what was released, within every cap, paid
+    to the supplier, and always reviewed by a named officer.
+    """
+    require(cfg, DECIDE_REQUIRED)
+    if exposure.borrower_blocked:
+        return Decision("BLOCKED", reasons=[Reason("BORROWER_BLOCKED", "New releases are blocked for this borrower.")])
+    if job.variation_order_signed is not True:
+        return Decision("BLOCKED", reasons=[Reason("VARIATION_UNSIGNED", "The payer has not signed the variation order.")])
+    if job.invoice_amount <= job.materials_cost:
+        return Decision("NO_TOP_UP_NEEDED", reasons=[Reason("NO_EXTRA_MATERIALS",
+                        "The variation does not raise the materials cost.")])
+    base, _, binding = advance_limit(job.invoice_amount, job.deposit_amount, cfg)
+    extra = base - already_released
+    headrooms = {
+        "caps.per_borrower_live": get(cfg, "caps.per_borrower_live") - exposure.borrower_live_amount,
+        "caps.per_supplier_live": get(cfg, "caps.per_supplier_live") - exposure.supplier_live_amount,
+        "caps.per_sponsor_cohort": get(cfg, "caps.per_sponsor_cohort") - exposure.cohort_live_amount,
+        "caps.pilot_total": get(cfg, "caps.pilot_total") - exposure.pilot_live_amount,
+    }
+    amount = max(0.0, min(extra, *headrooms.values()))
+    if extra <= 0:
+        return Decision("NO_TOP_UP_NEEDED", reasons=[Reason("LIMIT_ALREADY_RELEASED",
+                        f"The bridge already reaches its limit ({binding}).")])
+    if amount <= 0:
+        full = [k for k, v in headrooms.items() if v <= 0]
+        return Decision("BLOCKED", reasons=[Reason("CAP_REACHED", "No headroom under: " + ", ".join(full))])
+    flags = ["AMOUNT_LIMITED_BY_CAP"] if amount < extra or binding == "caps.per_bridge" else []
+    return Decision("RELEASE_VARIATION", approved_amount=amount, review_level="manual",
+                    reasons=[Reason("VARIATION_SIGNED", f"Payer signed a variation: materials RM{job.materials_cost:,.2f} "
+                                    f"-> RM{job.invoice_amount:,.2f}. Top-up after RM{already_released:,.2f} released.")],
+                    flags=flags, payee=job.supplier_id, tranches=[amount])

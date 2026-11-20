@@ -19,7 +19,7 @@ from pathlib import Path
 
 from . import compliance, gates, report, simulate
 from .config import ConfigIncomplete, ConfigInvalid, check_config, get, is_demo, layer_keys, load_config, require
-from .decide import decide
+from .decide import decide, decide_variation
 from .models import Exposure, Job
 from .screen import screen
 from .waterfall import allocate_loss
@@ -43,7 +43,7 @@ def _banner(cfg: dict) -> str:
 
 def _decision_text(d) -> str:
     lines = [f"Route:    {d.route}"]
-    if d.route == "RELEASE":
+    if d.route in ("RELEASE", "RELEASE_VARIATION"):
         lines += [f"Amount:   RM{d.approved_amount:,.2f}",
                   f"Payee:    supplier {d.payee} (never the borrower)",
                   f"Review:   {d.review_level}"]
@@ -64,9 +64,14 @@ def cmd_screen(args, cfg):
 def cmd_decide(args, cfg):
     exposure = Exposure.from_dict(_load_json(args.exposure)) if args.exposure else Exposure()
     job = Job.from_dict(_load_json(args.job))
-    d = decide(job, exposure, cfg)
+    if args.top_up_after is not None:
+        d = decide_variation(job, args.top_up_after, exposure, cfg)
+    else:
+        d = decide(job, exposure, cfg)
     standing = compliance.controlled_account_flag()
     text = _banner(cfg) + _decision_text(d)
+    if d.route == "RELEASE_VARIATION":
+        text += f"\nTop-up:   paid to supplier {d.payee}; a named officer reviews it"
     if d.route == "RELEASE" and job.materials_cost:
         text += (f"\nAdvance:  {d.approved_amount / job.materials_cost:.0%} of quoted materials cost "
                  f"(setting: up to {get(cfg, 'release.margin_of_advance'):.0%})")
@@ -158,6 +163,8 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("job"); sp.add_argument("--config", required=True)
     sp = add("decide", cmd_decide, "release decision for a job")
     sp.add_argument("job"); sp.add_argument("--config", required=True); sp.add_argument("--exposure")
+    sp.add_argument("--top-up-after", type=float, metavar="RM",
+                    help="variation order on a live bridge: amount already released")
     sp = add("waterfall", cmd_waterfall, "allocate one loss through the layers")
     sp.add_argument("--loss", type=float, required=True); sp.add_argument("--config", required=True)
     sp = add("gates", cmd_gates, "score the pilot gates from a bridge log")

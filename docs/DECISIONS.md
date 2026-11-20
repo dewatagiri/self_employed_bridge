@@ -11,13 +11,14 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A2 | 20 Nov 2026 | Bridge size: the whole deposit counts against materials first; the bridge covers only the gap (confirms D1). | `screen.deposit_to_materials_share: 1.0`. Moving to a partial share later is a config change. |
 | A3 | 20 Nov 2026 | First-loss reserve is one pool per sponsor cohort, not a slice per borrower. | Confirms the build: `allocate_pool` shares the reserve across a cohort; gates measure all-cohort loss against one reserve per cohort (D16). |
 | A4 | 20 Nov 2026 | The borrower pays the guarantee fee on drawn amounts, on top of the flat fee; it passes to the guarantor. | Confirms D25 option one. Break-even flat fee = cost to serve + expected financier loss. The alternative figure is removed from the report. |
+| A5 | 20 Nov 2026 | A variation order signed by the payer can release more on the same bridge (as the article says). | Replaces D2. At release, a signed variation raises the materials cost to the varied total. On a live bridge, `decide_variation` (CLI: `decide --top-up-after RM`) releases the difference, within margin of advance and every cap, to the supplier, always with manual review. Unsigned: extra blocked. |
 
 ## Interpretations made in the build
 
 | # | Where | Choice | Why / how to change |
 |---|---|---|---|
 | D1 | `decide.py` | need = max(0, materials − deposit × `deposit_to_materials_share`); amount = min(need, materials, invoice, per-bridge cap, headroom under every cap) | Handover §6.2, flagged as open item 1. A plain cap at materials cost is `deposit_to_materials_share: 0`. |
-| D2 | `decide.py` | Approved amount never exceeds the quoted materials cost, even with a signed variation order. Unsigned extra → manual review, extra blocked. Signed → flag `VARIATION_SIGNED_EXTRA_NOT_BRIDGED`. | "Never above the materials cost" read as absolute. A signed variation would need a new quote. |
+| D2 | `decide.py` | ~~Approved amount never exceeds the quoted materials cost, even with a signed variation order.~~ | Superseded by A5. |
 | D3 | `decide.py` | Template mismatch → manual review, not a block. | The design says "matches the template or is reviewed by hand". |
 | D4 | `decide.py` | Routes after screening: `DECLINE` (adverse record, related payer, duplicate job), `BLOCKED` (any other failed check, or no cap headroom), `RELEASE`. | Separates "never" from "not yet". |
 | D5 | `decide.py` | Two-step release: tranche 1 = `two_step_release_over_amount`, tranche 2 = the rest. | Avoids inventing a split ratio. |
