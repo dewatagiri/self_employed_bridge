@@ -48,6 +48,7 @@ pricing:
       - "top of the market invoice financing range, 0.8-1.5% a month (market_reference, pending A9)"
 layers:
   first_loss_reserve: null              # RM, sponsor-funded, per cohort
+  unused_reserve_returned: true         # author decision A16: what the cohort does not spend goes back to the sponsor once its loans are closed and recoveries are in
   guarantor_enabled: true               # author decision, 20 Nov 2026: a guarantee provider covers part of the loss
   guarantor_cover_pct: null             # share of loss above the reserve
   guarantor_cap: null                   # RM, programme cap
@@ -57,6 +58,8 @@ financier:
   cost_of_funds_pa: null           # the DFI's cost of the debt that funds the drawn amount, per annum
   capital_pct_of_drawn: null       # equity the DFI holds against the drawn amount
   cost_of_equity_pa: null          # the DFI's required return on that equity (its hurdle)
+sponsor:                               # who funds the first-loss reserve (author decision A16)
+  cost_of_funds_pa: null          # the sponsor's cost of having the reserve tied up, per annum
 guarantor:                              # the guarantee provider's own costs (author decision A15)
   cost_of_capital_pa: null          # its required return on the capital it sets aside (the guarantee cap)
   admin_cost_per_bridge: null           # RM to monitor and administer each guaranteed bridge

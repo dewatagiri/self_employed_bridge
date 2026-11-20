@@ -605,7 +605,36 @@ ax.forEach(function(a){document.getElementById('rr_'+a).addEventListener('input'
         f'</tbody></table></div><script type="application/json" id="rgrid">{data}</script><script>{js}</script>')
 
 
-def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str, dev_grid=None, damage_grid=None, rr_grid=None) -> str:
+def _reserve_block(rows: list[dict], cfg: dict) -> str:
+    """The sponsor's reserve: what each size costs the sponsor and what it does for the guarantor and the DFI (A16)."""
+    cur = get(cfg, "layers.first_loss_reserve")
+    s0 = rows[0]["sponsor"]
+    returned = s0["is_returned"]
+    body = []
+    for x in rows:
+        s = x["sponsor"]
+        bold = x["reserve"] == cur
+        mark = (lambda t: f"<strong>{t}</strong>") if bold else (lambda t: t)  # noqa: E731
+        body.append([mark(_rm(x["reserve"]) + (" (config)" if bold else "")), mark(_rm(s["expected_used"])), mark(_rm(s["returned"])),
+                     mark(_rm(s["holding_cost"])), mark(_rm(s["net_cost"])), mark(_rm(s["net_cost_per_1000_lent"])),
+                     mark(fmt(s["p_reserve_out"], "pct")), mark(fmt(x["guarantor_roc"], "pct")), mark(fmt(x["dfi_roc"], "pct"))])
+    tbl = table(["Reserve funded per cohort", "Expected spent", "Expected returned", f"Cost of money tied up ({s0['hold_days']:.0f} days)",
+                 "Sponsor's net cost per group", "…per RM1,000 lent", "Chance it runs out", "Guarantor return on capital", "DFI return on capital"],
+                body, set(range(1, 9)))
+    return (
+        '<p class="note">The sponsor funds the first-loss reserve <strong>up front, into a ring-fenced account</strong> (a promise is not enough: the '
+        'guarantor\'s cover sits on top of it). Losses use it first. '
+        + ("What the cohort does not spend <strong>goes back to the sponsor</strong> once its loans are closed and recoveries are in, so the sponsor's "
+           "cost is what is spent plus the cost of having the money tied up for the cohort's life."
+           if returned else "Unused reserve is <strong>forfeited</strong> in this configuration, so the sponsor's cost is the whole reserve.")
+        + " The sponsor earns no financial return: this is the grant that pays for additionality. The cost of money tied up uses the sponsor's own cost "
+        f"of funds ({fmt(get(cfg, 'sponsor.cost_of_funds_pa'), 'pct')} a year here, a placeholder). The other columns use the config's own cover, guarantee fee, "
+        "all-in cap and cost to serve.</p>" + tbl +
+        '<p class="note">A bigger reserve costs the sponsor little extra to spend, but it moves the point where the guarantor starts paying further above the '
+        'expected loss, which is what lets the guarantor earn its required return.</p>')
+
+
+def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path: str, dev_grid=None, damage_grid=None, rr_grid=None, reserve_rows=None) -> str:
     s = out["summary"]
     totals = [r.total_loss for r in out["runs"]]
     reserve = get(cfg, "layers.first_loss_reserve")
@@ -680,6 +709,8 @@ def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path:
         body += ["<h2>Developmental pricing</h2>", _dev_block(dev_grid, cfg)]
     if rr_grid:
         body += ["<h2>Risk and return: the DFI and the guarantor</h2>", _rr_block(rr_grid, cfg)]
+    if reserve_rows:
+        body += ["<h2>The sponsor's reserve: what it costs and what it buys</h2>", _reserve_block(reserve_rows, cfg)]
     if damage_grid:
         body += ["<h2>Damage rate and the loss trip wire</h2>", _damage_block(damage_grid, cfg)]
     body += ["<h2>Method and limits</h2>", "<ul>"

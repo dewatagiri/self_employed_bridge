@@ -127,3 +127,55 @@ def rr_grid(cfg: dict, draws: list[list[Draw]]) -> Optional[dict]:
                 for si, cts in enumerate(sl["cost_to_serve_per_bridge"]):
                     cells[f"{ci}|{ai}|{gi}|{si}"] = risk_return(runs, c, cap, g, cts)
     return {"axes": sl, "cells": cells}
+
+
+# ---------- the sponsor's reserve (author decision A16) ----------
+#
+# The sponsor funds a first-loss reserve per cohort, up front, into a ring-fenced account. Losses use it first. What the cohort
+# does not spend goes back to the sponsor once the cohort's loans are closed and recoveries are in (`layers.unused_reserve_returned`).
+# The sponsor's real cost is therefore what is spent plus the cost of having the money tied up for the cohort's life
+# (cohort days + the write-off period). If unused reserve were forfeited instead, the cost would be the whole reserve.
+
+SPONSOR_KEYS = ["sponsor.cost_of_funds_pa", "simulation.cohort_days", "collections.write_off_after_days", "layers.first_loss_reserve"]
+
+
+def sponsor_view(runs: list[Run], cfg: dict) -> Optional[dict]:
+    """The sponsor's cost for one reserve size, or None while its settings are missing."""
+    if any(get(cfg, k) is None for k in SPONSOR_KEYS):
+        return None
+    reserve = get(cfg, "layers.first_loss_reserve")
+    returned = bool(get(cfg, "layers.unused_reserve_returned"))
+    hold_years = (get(cfg, "simulation.cohort_days") + get(cfg, "collections.write_off_after_days")) / 365
+    holding = get(cfg, "sponsor.cost_of_funds_pa") * reserve * hold_years
+    used = [min(r.first_loss, reserve) for r in runs]
+    unused = [reserve - u for u in used]
+    net = [u + holding + (0.0 if returned else x) for u, x in zip(used, unused)]
+    m = statistics.fmean
+    n, lent = m([r.n_released for r in runs]) or 1.0, m([r.released for r in runs]) or 1.0
+    return {"committed": reserve, "expected_used": m(used), "expected_unused": m(unused),
+            "returned": m(unused) if returned else 0.0, "holding_cost": holding, "hold_days": hold_years * 365,
+            "net_cost": m(net), "net_cost_per_loan": m(net) / n, "net_cost_per_1000_lent": m(net) / lent * 1000,
+            "p_reserve_out": sum(r.reserve_exhausted for r in runs) / len(runs), "is_returned": returned,
+            "worst_5pct_used": pct(used, 95)}
+
+
+def reserve_table(cfg: dict, draws: list[list[Draw]]) -> Optional[list[dict]]:
+    """One row per reserve size in `sliders.first_loss_reserve`: what it costs the sponsor and what it does for the guarantor
+    and the DFI, at the config's own cover, guarantee fee, all-in cap and cost to serve."""
+    sizes = get(cfg, "sliders.first_loss_reserve")
+    cap = get(cfg, "pricing.all_in_rate_cap_pa")
+    if not sizes or cap is None or any(get(cfg, k) is None for k in COST_KEYS + SPONSOR_KEYS):
+        return None
+    require(cfg, ["pricing.guarantee_fee_rate_on_drawn", "pricing.cost_to_serve_per_bridge"])
+    rows = []
+    for size in sizes:
+        c = copy.deepcopy(cfg)
+        c["layers"]["first_loss_reserve"] = size
+        runs = [run_cohort(d, c) for d in draws]
+        x = risk_return(runs, c, cap, get(c, "pricing.guarantee_fee_rate_on_drawn"), get(c, "pricing.cost_to_serve_per_bridge"))
+        if x is None:
+            continue
+        rows.append({"reserve": size, "sponsor": sponsor_view(runs, c), "dfi": x["dfi"], "guarantor": x["guarantor"],
+                     "dfi_roc": x["dfi"]["return_on_capital_pa"],
+                     "guarantor_roc": x["guarantor"]["return_on_capital_pa"] if x["guarantor"] else None})
+    return rows

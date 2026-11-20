@@ -144,6 +144,11 @@ def cmd_simulate(args, cfg):
         if g:
             lines.append(f"  Guarantor  return on capital {g['return_on_capital_pa']:.1%} vs hurdle {g['hurdle']:.0%} (spread {g['spread']:+.1%}); "
                          f"loss-making groups {g['p_loss']:.0%}; worst-5% average RM{g['es5']:,.0f}")
+        sv = riskreturn.sponsor_view([simulate.run_cohort(d, cfg) for d in out["draws"]], cfg)   # None while its settings are missing
+        if sv:
+            lines.append(f"  Sponsor    reserve RM{sv['committed']:,.0f} funded up front; expected spent RM{sv['expected_used']:,.0f}, "
+                         f"{'returned' if sv['is_returned'] else 'forfeited'} RM{sv['expected_unused']:,.0f}; net cost RM{sv['net_cost']:,.0f} per group "
+                         f"(RM{sv['net_cost_per_1000_lent']:,.2f} per RM1,000 lent)")
         lines.append(f"  Cost-covering all-in rate {rrb['cost_covering_all_in_pa']:.1%} a year vs cap {rrb['all_in_cap_pa']:.1%}: "
                      f"gap {rrb['gap_pa']:+.1%} = RM{rrb['gap_per_loan']:,.2f} per loan")
     if args.out:
@@ -152,7 +157,8 @@ def cmd_simulate(args, cfg):
         dev_grid = simulate.dev_grid(cfg, out["draws"])
         damage_grid = simulate.damage_grid(cfg, out["draws"])
         rr_grid = riskreturn.rr_grid(cfg, out["draws"])
-        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid, rr_grid), encoding="utf-8")
+        reserve_rows = riskreturn.reserve_table(cfg, out["draws"])
+        Path(args.out).write_text(report.render_simulation(out, sens, grid, cfg, args.config, dev_grid, damage_grid, rr_grid, reserve_rows), encoding="utf-8")
         lines.append(f"Wrote {args.out}")
     _out(args, {"summary": s}, "\n".join(lines))
 

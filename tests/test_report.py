@@ -111,3 +111,16 @@ def test_risk_return_hidden_without_costs(built):
     cfg["guarantor"]["cost_of_capital_pa"] = None
     assert riskreturn.rr_grid(cfg, out["draws"]) is None
     assert "Risk and return: the DFI and the guarantor" not in report.render_simulation(out, sens, grid, cfg, "x", None, None, None)
+
+
+def test_reserve_section(built):
+    from self_employed_bridge import riskreturn
+    cfg, out, sens, grid = built
+    cfg["layers"]["guarantor_cover_pct"] = 0.7
+    rows = riskreturn.reserve_table(cfg, out["draws"])
+    h = report.render_simulation(out, sens, grid, cfg, "x", None, None, None, rows)
+    assert "The sponsor's reserve: what it costs and what it buys" in h and "ring-fenced account" in h
+    assert "goes back to the sponsor" in h and "<strong>RM10,000 (config)</strong>" in h
+    cfg["layers"]["unused_reserve_returned"] = False
+    h2 = report.render_simulation(out, sens, grid, cfg, "x", None, None, None, riskreturn.reserve_table(cfg, out["draws"]))
+    assert "forfeited" in h2 and "goes back to the sponsor" not in h2

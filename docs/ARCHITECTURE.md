@@ -94,6 +94,15 @@ Priced below cost on purpose (A13). The engine reports the cost and measures wha
    break-even fees (economic profit 0) added = all-in rate that covers every cost ─▶ gap to the cap
 ```
 
+### The sponsor's reserve
+
+```
+ sponsor ─ funds up front, ring-fenced ─▶ RESERVE ─▶ first losses of the cohort
+                                             │
+        cohort closed + recoveries in ───────┴─▶ unused part returned to the sponsor
+ sponsor's net cost = what was spent + cost of the money tied up (cohort days + write-off period)
+```
+
 ## Loss trip wire
 
 ```
