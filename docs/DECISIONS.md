@@ -47,10 +47,13 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 | Guarantor cap | none: 70% of every loss above the reserve (batch 6) | `layers.guarantor_cap: 1500000`, equal to the cohort cap so it cannot bind (the engine reads null as 0, so "no cap" is a number too big to reach) |
 | Reserve size | RM50,000 per cohort of 100 loans, confirmed (batch 8; the earlier "programme size" answer was unclear) | `layers.first_loss_reserve: 50000` |
 | Guarantor exposure limit | keep no cap (batch 8) | as above |
-| Programme size and late-payer share | batch 8 answers were "other" with no value: **not recorded**; programme stays 100-loan cohorts, late payers stay 20% | asked again in batch 9 |
+| Programme size | 10 cohorts of 100 loans, 1,000 clients (batch 9) | `caps.pilot_total: 10000000` |
+| Late payers | keep 20% (batch 9) | `outcome_probs.late: 0.20` |
+| Bypass stop line | keep 10% (batch 9) | `stop_lines.pause_if_bypass_rate_over: 0.10` |
+| Guarantee fee | keep 3.5% a year; no search for a cheapest split (batch 9) | `pricing.guarantee_fee_rate_on_drawn: 0.035` |
 | The guarantor's admin cost per loan | RM2 (batch 5; same as the placeholder) | `guarantor.admin_cost_per_bridge: 2` |
 | Who lifts the loss trip wire | the guarantor (batch 5) | a process rule: the engine has no user roles, the line is changed in the config as a recorded decision, so keep that change under the guarantor's sign-off |
-| Loss trip wire line | 5% of money lent with a known outcome (batch 7) | `stop_lines.pause_if_loss_rate_over: 0.05` (minimum 30 known loans, batch 8) |
+| Loss trip wire line | 8% of money lent with a known outcome (batch 9; 5% in batch 7) | `stop_lines.pause_if_loss_rate_over: 0.08` (minimum 30 known loans, batch 8) |
 | Additionality | 30% (batch 7); I read it as the share of borrowers new to formal credit the pilot must show | `gates.gate4_min_new_to_credit_share: 0.3`, a pass mark; the pilot measures the real share |
 | Stop-line minimum loans | loss trip wire: 30 (batch 8); bypass stop line: 50, my suggestion | `stop_lines.loss_rate_min_bridges: 30`, `bypass_rate_min_bridges: 50` |
 | Recovered when a customer pays the painter in cash | 10%: the fintech will not chase (batch 5; earlier 25%) | `recovery_rate_by_outcome.bypass: 0.1` |
@@ -62,7 +65,7 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 
 `pricing.flat_fee_per_bridge` is 360 only so the older report sections agree with the cap (a placeholder). The reserve (RM50,000) and the guarantor cap (RM25,000) are the demo's ratios scaled ×5 to the cohort of 100; they are not the author's numbers.
 
-**Trip wire at 5% with a 30-loan minimum:** the base case loses about 5.7% of money lent, so the line fires in about **88% of cohorts** and pauses new loans (84% of cohorts paused by any stop line). That cuts losses (the joint result before the reserve charge improves from RM29,240 to RM20,649 per group) but the programme stops lending early. Set it above the loss rate you plan for, or accept that it is a brake you expect to use.
+**Trip wire at 8% with a 30-loan minimum:** the base case loses about 5.7% of money lent on average, but groups of about 100 loans are noisy, so the line fires in about **57% of cohorts** and pauses new loans (84% of cohorts paused by any stop line). That cuts losses (the joint result before the reserve charge improves from RM29,240 to RM20,649 per group) but the programme stops lending early. Set it above the loss rate you plan for, or accept that it is a brake you expect to use.
 
 **What it shows** (1,000 groups of about 96 loans, trip wire off; reserve RM50,000 all from the DFI; 10% recovered on cash payments; guarantor with no cap and a 3% required return). At 5% cash the DFI and guarantor together lose about **RM306 per loan** after funding the reserve.
 Before the reserve's funding cost, the rate that covers every cost is 15.7% a year against the 18% cap. The guarantor, with no cap, earns about −1.3% a year on its capital against its 3% hurdle, and loses in 54% of cohorts; its worst-5% cohorts lose about RM40,000.
