@@ -48,6 +48,8 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 | Reserve size | "up to programme size, e.g. 1000 clients" (batch 6): unclear, so **not changed**; RM50,000 per cohort of 100 stays a placeholder | `layers.first_loss_reserve: 50000`; see the question asked in batch 7 |
 | The guarantor's admin cost per loan | RM2 (batch 5; same as the placeholder) | `guarantor.admin_cost_per_bridge: 2` |
 | Who lifts the loss trip wire | the guarantor (batch 5) | a process rule: the engine has no user roles, the line is changed in the config as a recorded decision, so keep that change under the guarantor's sign-off |
+| Loss trip wire line | 5% of money lent with a known outcome (batch 7) | `stop_lines.pause_if_loss_rate_over: 0.05` (minimum 50 known loans stays my suggestion) |
+| Additionality | 30% (batch 7); I read it as the share of borrowers new to formal credit the pilot must show | `gates.gate4_min_new_to_credit_share: 0.3`, a pass mark; the pilot measures the real share |
 | Stop-line minimum loans | 50, my suggestion (half the cohort), not the author's | `stop_lines.*_min_bridges: 50` |
 | Recovered when a customer pays the painter in cash | 10%: the fintech will not chase (batch 5; earlier 25%) | `recovery_rate_by_outcome.bypass: 0.1` |
 | Pay late | 20%, and they do pay in full | `outcome_probs.late: 0.20`; `recovery_rate_by_outcome.late: 1.0` |
@@ -58,7 +60,9 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 
 `pricing.flat_fee_per_bridge` is 360 only so the older report sections agree with the cap (a placeholder). The reserve (RM50,000) and the guarantor cap (RM25,000) are the demo's ratios scaled ×5 to the cohort of 100; they are not the author's numbers.
 
-**What it shows** (1,000 groups of about 96 loans; reserve RM50,000 all from the DFI; 10% recovered on cash payments; guarantor with no cap and a 3% required return). At 5% cash the DFI and guarantor together lose about **RM306 per loan** after funding the reserve.
+**Trip wire at 5%:** the base case loses about 5.7% of money lent, so a 5% line fires in about **76% of cohorts** and pauses new loans (84% of cohorts paused by any stop line). That cuts losses (the joint result before the reserve charge improves from RM29,240 to RM20,649 per group) but the programme stops lending early. Set it above the loss rate you plan for, or accept that it is a brake you expect to use.
+
+**What it shows** (1,000 groups of about 96 loans, trip wire off; reserve RM50,000 all from the DFI; 10% recovered on cash payments; guarantor with no cap and a 3% required return). At 5% cash the DFI and guarantor together lose about **RM306 per loan** after funding the reserve.
 Before the reserve's funding cost, the rate that covers every cost is 15.7% a year against the 18% cap. The guarantor, with no cap, earns about −1.3% a year on its capital against its 3% hurdle, and loses in 54% of cohorts; its worst-5% cohorts lose about RM40,000.
 One caution: with no cap the engine sets aside the whole cohort cap as the guarantor's capital, which overstates the capital charge. Joint result per loan, after funding the reserve:
 

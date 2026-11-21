@@ -79,7 +79,7 @@ collections:
 stop_lines:
   pause_if_bypass_rate_over: 0.10       # DEMO ONLY, not a finding
   bypass_rate_min_bridges: 50   # SUGGESTION, not the author's: about half the cohort of 100
-  pause_if_loss_rate_over: null         # loss trip wire (author decision A14): pause new bridges when the loss so far, after recoveries, is above this share of money lent. Demo leaves it off; the damage section shows its effect
+  pause_if_loss_rate_over: 0.05         # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 5% (batch 7 Q3); the guarantor lifts it (batch 5). Loss trip wire (author decision A14): pause new bridges when the loss so far, after recoveries, is above this share of money lent. Demo leaves it off; the damage section shows its effect
   loss_rate_min_bridges: 50   # SUGGESTION, not the author's: about half the cohort of 100
   outcome_lag_bridges: 10   # DEMO ONLY, not a finding
   target_quote_to_supplier_payment_hours: 4   # DEMO ONLY, not a finding
@@ -90,7 +90,7 @@ gates:
   gate2_max_bypass_rate: null
   gate2_max_loss_to_reserve: null
   gate3_min_fee_cover_ratio: null
-  gate4_min_new_to_credit_share: null
+  gate4_min_new_to_credit_share: 0.3   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 30% of borrowers new to formal credit (batch 7 Q4); read as the pass mark, the pilot measures the real share
   gate4_min_job_needed_share: null
 simulation:
   n_bridges: 100                        # DEMO ONLY, not a finding

@@ -236,7 +236,7 @@ with its money tied up charged at its own required return, a table of what each 
 ## The author's base case
 
 `config/params.base_case.yaml` is the demo with the author's own answers on top (a 90-day tenor, RM5 to serve, loans of about RM10,000, the DFI's cost of funds at 3%,
-3% damage with 70% lost on each damaged loan, 20% late payers who do pay, 5% cash payments to the painter with a controlled account and 10% recovered (no chasing), a cohort of 100 loans, the DFI funding the whole reserve, the guarantor covering 70% of every loss above it with no cap and a 3% required return, 70% cover, a 3.5% guarantee fee, an 18% a year
+3% damage with 70% lost on each damaged loan, 20% late payers who do pay, 5% cash payments to the painter with a controlled account and 10% recovered (no chasing), a cohort of 100 loans, the DFI funding the whole reserve, the guarantor covering 70% of every loss above it with no cap and a 3% required return, a 5% loss trip wire (it fires in about three cohorts in four on this case), 70% cover, a 3.5% guarantee fee, an 18% a year
 all-in cap), each marked `AUTHOR ASSUMPTION`. They are assumptions, not findings, and the rest is still placeholder, so its reports still say DEMO PARAMETERS.
 Open it with `bridge simulate --config config/params.base_case.yaml --out report.html` ([`docs/base_case_report.html`](docs/base_case_report.html)).
 
@@ -288,7 +288,7 @@ a share of the money lent on loans with a known outcome, **new loans and top-ups
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 224 tests (`pytest`).
+(open in a browser) · 225 tests (`pytest`).
 
 ## Licence
 
