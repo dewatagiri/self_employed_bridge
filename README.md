@@ -236,12 +236,12 @@ with its money tied up charged at its own required return, a table of what each 
 ## The author's base case
 
 `config/params.base_case.yaml` is the demo with the author's own answers on top (a 90-day tenor, RM5 to serve, loans of about RM10,000, the DFI's cost of funds at 3%,
-3% damage with 70% lost on each damaged loan, 20% late payers who do pay, 5% cash payments to the painter with a controlled account and 25% recovered, a cohort of 100 loans, the DFI funding the whole reserve, 70% cover, a 3.5% guarantee fee, an 18% a year
+3% damage with 70% lost on each damaged loan, 20% late payers who do pay, 5% cash payments to the painter with a controlled account and 10% recovered (no chasing), a cohort of 100 loans, the DFI funding the whole reserve, 70% cover, a 3.5% guarantee fee, an 18% a year
 all-in cap), each marked `AUTHOR ASSUMPTION`. They are assumptions, not findings, and the rest is still placeholder, so its reports still say DEMO PARAMETERS.
 Open it with `bridge simulate --config config/params.base_case.yaml --out report.html` ([`docs/base_case_report.html`](docs/base_case_report.html)).
 
-On this case the DFI and the guarantor together lose about RM228 per loan once the reserve's funding is charged: it is priced below cost **while 5% of customers pay the painter in cash**. A working split of
-the cap needs about 1% cash or less at 25% recovered. The cash-payment chance and how much is recovered are the numbers to pin down. Legal status of the controlled account and the all-in cap is recorded as
+On this case the DFI and the guarantor together lose about RM306 per loan once the reserve's funding is charged: it is priced below cost **while 5% of customers pay the painter in cash**. A working split of
+the cap needs about 1% cash or less. The cash-payment chance and how much is recovered are the numbers to pin down. Legal status of the controlled account and the all-in cap is recorded as
 confirmed (the author's report; keep the written advice on file). `docs/DECISIONS.md` has the table.
 
 ## Path to viability

@@ -63,10 +63,10 @@ financier:
   moneylender_caps: {secured: 0.12, unsecured: 0.18}
   cost_of_funds_pa: 0.03   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (the DFI's cost of funds, batch 3 Q5a)
   capital_pct_of_drawn: 0.08   # DEMO ONLY, not a finding
-  cost_of_equity_pa: 0.12   # DEMO ONLY, not a finding
+  cost_of_equity_pa: 0.03   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the DFI's required return on its reserve money, 3% (batch 5 Q1b)
 guarantor:                              # the guarantee provider's own costs (author decision A15)
   cost_of_capital_pa: 0.10   # DEMO ONLY, not a finding
-  admin_cost_per_bridge: 2   # DEMO ONLY, not a finding
+  admin_cost_per_bridge: 2   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: RM2 a loan (batch 5 Q3a; the same as the demo's placeholder)
 compliance:                             # legal status of two points; the engine takes no view on the law. null = open item, confirmed = legal has confirmed (keep the written advice on file)
   controlled_account_legal_status: confirmed   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the author reports legal has confirmed both points (batch 4 Q5a); keep the written advice on file
   all_in_cap_legal_status: confirmed           # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: as above
@@ -100,7 +100,7 @@ simulation:
   amount_distribution: {kind: lognormal, mean: 9.55, sigma: 0.5}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (average bridge about RM10,000, batch 3 Q4d; the mean of ln RM is arithmetic from that)
   deposit_share_of_materials: {low: 0.1, high: 0.6}   # DEMO ONLY, not a finding
   outcome_probs: {on_time: 0.72, late: 0.20, bypass: 0.05, dispute: 0.018, abandoned: 0.012}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: damage 3% (split 3:2 as in the demo); cash to the painter 5% with a controlled account only (batch 4 Q1d); late 20%
-  recovery_rate_by_outcome: {on_time: 1.0, late: 1.0, bypass: 0.25, dispute: 0.3, abandoned: 0.3}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 70% of a damaged loan is lost (Q4, and suppliers rarely take materials back); only 25% recovered when the customer pays the painter in cash; late payers do pay in full
+  recovery_rate_by_outcome: {on_time: 1.0, late: 1.0, bypass: 0.1, dispute: 0.3, abandoned: 0.3}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 70% of a damaged loan is lost (Q4, and suppliers rarely take materials back); only 10% recovered when the customer pays the painter in cash (batch 5 Q4c: we will not chase); late payers do pay in full
   damage_dispute_share: 0.6   # DEMO ONLY, not a finding
 sliders:                                # values the report precomputes for its sliders
   margin_of_advance: [0.80, 0.85, 0.90, 0.95, 1.00]   # DEMO ONLY, not a finding
