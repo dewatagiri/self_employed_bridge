@@ -24,9 +24,9 @@ release:
 caps:
   per_bridge: 25000                     # DEMO ONLY, not a finding: raised so the larger loans are not cut off by a placeholder cap
   per_borrower_live: 40000              # DEMO ONLY, not a finding: raised with the per-bridge cap
-  per_supplier_live: 50000              # DEMO ONLY, not a finding
-  per_sponsor_cohort: 200000            # DEMO ONLY, not a finding
-  pilot_total: 500000                   # DEMO ONLY, not a finding
+  per_supplier_live: 500000             # DEMO ONLY, not a finding: raised with the cohort cap
+  per_sponsor_cohort: 1500000           # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: a cohort of 100 loans of about RM10,000 (batch 4 Q2d); a cap, set high so it does not bind
+  pilot_total: 5000000                  # DEMO ONLY, not a finding: raised with the cohort cap
   max_live_bridges_per_borrower: 2      # DEMO ONLY, not a finding
   step_up_tiers:                        # author decision A11; tiers after clean repayments
     - {after_clean_repayments: 3, max_live_bridges_per_borrower: 3, per_borrower_live: 60000}   # DEMO ONLY, not a finding: raised so a step-up stays above the base
@@ -52,12 +52,12 @@ pricing:
       - "public contract financing scheme charge, 1.5% a month (handover s.10; author to confirm the product)"
       - "top of the market invoice financing range, 0.8-1.5% a month (market_reference, pending A9)"
 layers:
-  first_loss_reserve: 10000             # DEMO ONLY, not a finding
+  first_loss_reserve: 50000             # DEMO ONLY, not a finding: scaled by 5 with the cohort, keeping the demo's ratio of reserve to cohort size
   unused_reserve_returned: true         # author decision A16: what the cohort does not spend goes back to the sponsor once its loans are closed and recoveries are in
-  reserve_funded_by_guarantor_pct: 0.5   # DEMO ONLY, not a finding
+  reserve_funded_by_guarantor_pct: 0.0   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the DFI funds the whole reserve (batch 4 Q3d)
   guarantor_enabled: true               # DEMO ONLY, not a finding
   guarantor_cover_pct: 0.7              # AUTHOR ASSUMPTION 21 Nov 2026, not a finding ("we guarantee up to 70%")
-  guarantor_cap: 5000                   # DEMO ONLY, not a finding
+  guarantor_cap: 25000                  # DEMO ONLY, not a finding: scaled by 5 with the cohort
 financier:
   type: development_institution          # author decision, 20 Nov 2026
   moneylender_caps: {secured: 0.12, unsecured: 0.18}
@@ -67,6 +67,9 @@ financier:
 guarantor:                              # the guarantee provider's own costs (author decision A15)
   cost_of_capital_pa: 0.10   # DEMO ONLY, not a finding
   admin_cost_per_bridge: 2   # DEMO ONLY, not a finding
+compliance:                             # legal status of two points; the engine takes no view on the law. null = open item, confirmed = legal has confirmed (keep the written advice on file)
+  controlled_account_legal_status: confirmed   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the author reports legal has confirmed both points (batch 4 Q5a); keep the written advice on file
+  all_in_cap_legal_status: confirmed           # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: as above
 collections:
   days_past_due_reminder: 3             # DEMO ONLY, not a finding
   days_past_due_notice: 14              # DEMO ONLY, not a finding
@@ -75,9 +78,9 @@ collections:
   min_expected_recovery_to_chase: 0     # DEMO ONLY, not a finding
 stop_lines:
   pause_if_bypass_rate_over: 0.10       # DEMO ONLY, not a finding
-  bypass_rate_min_bridges: 20   # DEMO ONLY, not a finding
+  bypass_rate_min_bridges: 50   # SUGGESTION, not the author's: about half the cohort of 100
   pause_if_loss_rate_over: null         # loss trip wire (author decision A14): pause new bridges when the loss so far, after recoveries, is above this share of money lent. Demo leaves it off; the damage section shows its effect
-  loss_rate_min_bridges: 20   # DEMO ONLY, not a finding
+  loss_rate_min_bridges: 50   # SUGGESTION, not the author's: about half the cohort of 100
   outcome_lag_bridges: 10   # DEMO ONLY, not a finding
   target_quote_to_supplier_payment_hours: 4   # DEMO ONLY, not a finding
 gates:
@@ -96,16 +99,16 @@ simulation:
   cohort_days: 90   # DEMO ONLY, not a finding
   amount_distribution: {kind: lognormal, mean: 9.55, sigma: 0.5}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (average bridge about RM10,000, batch 3 Q4d; the mean of ln RM is arithmetic from that)
   deposit_share_of_materials: {low: 0.1, high: 0.6}   # DEMO ONLY, not a finding
-  outcome_probs: {on_time: 0.69, late: 0.20, bypass: 0.08, dispute: 0.018, abandoned: 0.012}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: damage 3% (Q3, split 3:2 as in the demo); cash to the painter 8% with no controls yet (batch 2, Q1e and Q2d); late 20% (Q5c)
+  outcome_probs: {on_time: 0.72, late: 0.20, bypass: 0.05, dispute: 0.018, abandoned: 0.012}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: damage 3% (split 3:2 as in the demo); cash to the painter 5% with a controlled account only (batch 4 Q1d); late 20%
   recovery_rate_by_outcome: {on_time: 1.0, late: 1.0, bypass: 0.25, dispute: 0.3, abandoned: 0.3}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 70% of a damaged loan is lost (Q4, and suppliers rarely take materials back); only 25% recovered when the customer pays the painter in cash; late payers do pay in full
   damage_dispute_share: 0.6   # DEMO ONLY, not a finding
 sliders:                                # values the report precomputes for its sliders
   margin_of_advance: [0.80, 0.85, 0.90, 0.95, 1.00]   # DEMO ONLY, not a finding
   flat_fee_per_bridge: [30, 45, 60, 75, 90]   # DEMO ONLY, not a finding
-  first_loss_reserve: [5000, 7500, 10000, 15000, 20000]   # DEMO ONLY, not a finding
+  first_loss_reserve: [25000, 37500, 50000, 75000, 100000]   # DEMO ONLY, not a finding: scaled by 5 with the cohort
 development:
   pricing_basis: developmental          # author decision A13
-  funder_loss_budget_per_cohort: 2000   # DEMO ONLY, not a finding
+  funder_loss_budget_per_cohort: null   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: not decided yet (batch 4 Q4e)
 dev_sliders:
   all_in_cap_pa: [0.12, 0.15, 0.18, 0.21]   # DEMO ONLY, not a finding
   guarantee_fee_pa: [0.02, 0.035, 0.05, 0.07]   # DEMO ONLY, not a finding

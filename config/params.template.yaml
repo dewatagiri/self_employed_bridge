@@ -62,6 +62,9 @@ financier:
 guarantor:                              # the guarantee provider's own costs (author decision A15)
   cost_of_capital_pa: null          # its required return on the capital it sets aside (the guarantee cap)
   admin_cost_per_bridge: null           # RM to monitor and administer each guaranteed bridge
+compliance:                             # legal status of two points; the engine takes no view on the law. null = open item, confirmed = legal has confirmed (keep the written advice on file)
+  controlled_account_legal_status: null  # whether the controlled account needs central-bank approval as e-money or a payment service
+  all_in_cap_legal_status: null          # whether the all-in cap, the guarantee fee included, is allowed for this financier type
 collections:
   days_past_due_reminder: null
   days_past_due_notice: null

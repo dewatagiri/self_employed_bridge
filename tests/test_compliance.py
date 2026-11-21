@@ -38,3 +38,19 @@ def test_export_needs_consent(make_job):
     check_export_consent(make_job())
     with pytest.raises(ConsentError):
         check_export_consent(make_job(pdpa_consent=False))
+
+
+def test_legal_confirmation_is_shown_as_such(demo):
+    assert controlled_account_flag(demo)["flag"] == "OPEN_ITEM" and "central-bank" in controlled_account_flag(demo)["message"]
+    demo["compliance"]["controlled_account_legal_status"] = "confirmed"
+    f = controlled_account_flag(demo)
+    assert f["flag"] == "CONFIRMED_BY_LEGAL" and "written advice" in f["message"]
+    assert controlled_account_flag()["flag"] == "OPEN_ITEM"                 # no config: still an open item
+
+
+def test_all_in_cap_confirmation_for_a_dfi(demo):
+    assert moneylender_check(60, 3000, 30, demo)["flag"] == "CHECK_REQUIRED"
+    demo["compliance"]["all_in_cap_legal_status"] = "confirmed"
+    assert moneylender_check(60, 3000, 30, demo)["flag"] == "CONFIRMED_BY_LEGAL"
+    demo["financier"]["type"] = "licensed_moneylender"                      # a confirmation for a DFI does not excuse a moneylender
+    assert moneylender_check(60, 3000, 30, demo)["flag"] == "MONEYLENDER_CAP_BREACH"

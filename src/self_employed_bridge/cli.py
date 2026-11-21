@@ -69,14 +69,14 @@ def cmd_decide(args, cfg):
         d = decide_variation(job, args.top_up_after, exposure, cfg)
     else:
         d = decide(job, exposure, cfg)
-    standing = compliance.controlled_account_flag()
+    standing = compliance.controlled_account_flag(cfg)
     text = _banner(cfg) + _decision_text(d)
     if d.route == "RELEASE_VARIATION":
         text += f"\nTop-up:   paid to supplier {d.payee}; a named officer reviews it"
     if d.route == "RELEASE" and job.materials_cost:
         text += (f"\nAdvance:  {d.approved_amount / job.materials_cost:.0%} of quoted materials cost "
                  f"(setting: up to {get(cfg, 'release.margin_of_advance'):.0%})")
-    _out(args, {"decision": d, "open_items": [standing]}, text + f"\nOpen item: {standing['message']}")
+    _out(args, {"decision": d, "open_items": [standing]}, text + f"\n{'Legal' if standing['flag'] == 'CONFIRMED_BY_LEGAL' else 'Open item'}: {standing['message']}")
 
 
 def cmd_waterfall(args, cfg):

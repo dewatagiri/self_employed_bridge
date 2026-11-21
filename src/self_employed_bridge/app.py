@@ -156,7 +156,7 @@ class App:
 <a href="/log.csv">Download log (CSV)</a></nav>
 <h1>{esc(title)}</h1><div class="meta">Config: <code>{esc(self.config_path)}</code></div>{banner}{note}
 {body}<footer>Every decision on this page is made by the engine. Staff carry out the tasks; the page contacts nobody.
-Open item: {esc(controlled_account_flag()["message"])}</footer></body></html>"""
+{"Legal" if controlled_account_flag(self.cfg)["flag"] == "CONFIRMED_BY_LEGAL" else "Open item"}: {esc(controlled_account_flag(self.cfg)["message"])}</footer></body></html>"""
 
     # ----- pages -----
 

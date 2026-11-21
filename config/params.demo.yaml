@@ -63,6 +63,9 @@ financier:
 guarantor:                              # the guarantee provider's own costs (author decision A15)
   cost_of_capital_pa: 0.10   # DEMO ONLY, not a finding
   admin_cost_per_bridge: 2   # DEMO ONLY, not a finding
+compliance:                             # legal status of two points; the engine takes no view on the law. null = open item, confirmed = legal has confirmed (keep the written advice on file)
+  controlled_account_legal_status: null  # whether the controlled account needs central-bank approval as e-money or a payment service
+  all_in_cap_legal_status: null          # whether the all-in cap, the guarantee fee included, is allowed for this financier type
 collections:
   days_past_due_reminder: 3             # DEMO ONLY, not a finding
   days_past_due_notice: 14              # DEMO ONLY, not a finding

@@ -20,6 +20,9 @@ def moneylender_check(flat_fee: float, amount: float, tenor_days: float, cfg: di
     rate = effective_annual_rate(flat_fee, amount, tenor_days)
     ftype = get(cfg, "financier.type")
     if ftype != "licensed_moneylender":
+        if get(cfg, "compliance.all_in_cap_legal_status") == "confirmed":
+            return {"flag": "CONFIRMED_BY_LEGAL", "effective_rate": rate,
+                    "message": f"Financier type '{ftype}': legal has confirmed the all-in cap (recorded by the author). Keep the written advice on file."}
         return {"flag": "CHECK_REQUIRED", "effective_rate": rate,
                 "message": f"Financier type '{ftype}': confirm which rules apply. Legal to confirm."}
     cap = get(cfg, "financier.moneylender_caps." + ("secured" if secured else "unsecured"))
@@ -29,8 +32,15 @@ def moneylender_check(flat_fee: float, amount: float, tenor_days: float, cfg: di
     return {"flag": "OK", "effective_rate": rate, "cap": cap, "message": "Within cap on a simple basis."}
 
 
-def controlled_account_flag() -> dict:
-    """Standing open item, not a calculation."""
+def controlled_account_flag(cfg: dict | None = None) -> dict:
+    """The controlled-account legal point. An open item until the config records that legal has confirmed it.
+
+    The engine takes no view on the law: `compliance.controlled_account_legal_status: confirmed` is the author's statement
+    that legal has confirmed the position, shown as such, and the written advice should be kept on file.
+    """
+    if cfg is not None and get(cfg, "compliance.controlled_account_legal_status") == "confirmed":
+        return {"flag": "CONFIRMED_BY_LEGAL", "message": "Legal has confirmed the controlled-account position (recorded by the "
+                "author). Keep the written advice on file."}
     return {"flag": "OPEN_ITEM", "message": "Confirm whether the controlled account needs central-bank "
             "approval as e-money or a payment service."}
 

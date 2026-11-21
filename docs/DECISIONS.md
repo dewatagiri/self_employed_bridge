@@ -36,8 +36,13 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 | Tenor (supplier paid until customer pays) | 90 days | `tenor.typical_days: 90` |
 | Damage rate (not completed or rejected) | 3% | dispute 1.8% + abandoned 1.2% (3:2 as in the demo) |
 | Loss on a damaged loan | 70% | `recovery_rate_by_outcome.dispute` and `.abandoned`: 0.3 (suppliers rarely take materials back) |
-| Cash controls you can enforce | a controlled account (customer pays only into it) | the cash chance with it was **not asked yet**; see below |
-| Customer pays the painter in cash | 8% (the earlier answer, with no controls); placeholder until the controlled-account chance is given | `outcome_probs.bypass: 0.08`; the slider runs from 1% to 8% |
+| Cash controls you can enforce | a controlled account (customer pays only into it) | see the next row |
+| Customer pays the painter in cash, with a controlled account only | 5% (batch 4) | `outcome_probs.bypass: 0.05`; the slider runs from 1% to 8% |
+| Cohort size | 100 loans (batch 4), about RM1 million lent | `simulation.n_bridges: 100`; the cohort cap, pilot cap, supplier cap, reserve and guarantor cap are scaled ×5 with it (placeholders, marked DEMO ONLY) |
+| Who funds the reserve | the DFI funds all of it (batch 4) | `layers.reserve_funded_by_guarantor_pct: 0.0` |
+| Funders' loss budget per cohort | not decided yet (batch 4) | `development.funder_loss_budget_per_cohort: null` |
+| Legal status: controlled account (e-money or payment service) and the 18% all-in cap | the author reports legal has confirmed both (batch 4) | `compliance.*_legal_status: confirmed`; the engine records it and does not judge the law. Keep the written advice on file |
+| Stop-line minimum loans | 50, my suggestion (half the cohort), not the author's | `stop_lines.*_min_bridges: 50` |
 | Recovered when a customer pays the painter in cash | 25% | `recovery_rate_by_outcome.bypass: 0.25` |
 | Pay late | 20%, and they do pay in full | `outcome_probs.late: 0.20`; `recovery_rate_by_outcome.late: 1.0` |
 | Cost to serve per loan | RM5 with automation | `pricing.cost_to_serve_per_bridge: 5` |
@@ -45,23 +50,23 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 | The DFI's cost of funds | 3% | `financier.cost_of_funds_pa: 0.03` |
 | Said earlier in the conversation | 70% cover, 3.5% guarantee fee, 18% a year all-in cap | `layers.guarantor_cover_pct`, `pricing.guarantee_fee_rate_on_drawn`, `pricing.all_in_rate_cap_pa` |
 
-`pricing.flat_fee_per_bridge` is 360 only so the older report sections agree with the cap (a placeholder). With loans of about RM10,000 and a RM200,000 cohort cap there are
-**about 20 loans per cohort**, so each group is noisy and the stop lines' minimum of 20 known loans is rarely reached; the real cohort size should set them.
+`pricing.flat_fee_per_bridge` is 360 only so the older report sections agree with the cap (a placeholder). The reserve (RM50,000) and the guarantor cap (RM25,000) are the demo's ratios scaled ×5 to the cohort of 100; they are not the author's numbers.
 
-**What it shows** (2,000 groups, reserve RM10,000 funded 50/50). At 8% cash and 25% recovered, credit loss is **8.0% of money lent** against **4.4% earned** over 90 days: the DFI and
-guarantor lose about **RM424 per loan** (RM43 per RM1,000 lent) and would need about 38% a year all-in against the 18% cap. Joint result per loan:
+**What it shows** (1,000 groups of about 96 loans, RM50,000 reserve all from the DFI). Before the cost of funding the reserve, credit loss is about 5.7% of money lent against 4.4% earned over 90 days; the guarantor earns about 1.8% a year on its capital against a 10% hurdle
+and loses in 42% of cohorts; the DFI earns well above its hurdle until it is charged for the reserve it has put up. **After funding the reserve** the two together lose about **RM228 per loan** (RM22 per RM1,000 lent).
+Joint result per loan (after funding the reserve), by cash-payment chance and the share recovered:
 
 | Cash chance | 25% recovered | 50% recovered | 75% recovered |
 |---|---|---|---|
-| 8% | −RM424 | −RM228 | −RM33 |
-| 5% | −RM205 | −RM83 | +RM40 |
-| 3% | −RM75 | +RM4 | +RM83 |
-| 2% | +RM12 | +RM62 | +RM112 |
-| 1% | +RM83 | +RM109 | +RM136 |
-| 0% | +RM163 | +RM163 | +RM163 |
+| 8% | −RM458 | −RM180 | +RM97 |
+| **5% (the answer)** | **−RM228** | −RM27 | +RM174 |
+| 3% | −RM78 | +RM73 | +RM224 |
+| 2% | +RM4 | +RM127 | +RM251 |
+| 1% | +RM83 | +RM180 | +RM277 |
+| 0% | +RM161 | +RM232 | +RM303 |
 
-The two parties break even **together** at about 2.1% cash payments if 25% is recovered (3.1% at 50%, 6.7% at 75%). For a **working split of the cap where both earn their required return**
-the cash chance must be about 1% or less at 25% recovered (then the guarantor needs about 6.7% and the DFI about 10.4%).
+At 5% cash and 25% recovered, a working split of the cap does not exist: the DFI would need about 26% a year and the guarantor about 3.7%. Both can earn their required return only at about **1% cash or less** (the DFI about 17% and the guarantor about 0.6%).
+The cash-payment chance (and how much is recovered) is still the number to pin down. These use the placeholders for each party's own hurdles and costs.
 
 ## Interpretations made in the build
 
@@ -127,15 +132,14 @@ the cash chance must be about 1% or less at 25% recovered (then the guarantor ne
 3. ~~Which financier types are in the pilot.~~ Decided (A1).
 4. Real thresholds for stop lines and gates, and every null in `params.template.yaml`
    (`bridge check-config` lists them).
-5. Whether the controlled account needs central-bank approval as e-money or a payment service
-   (standing flag on every `decide`).
+5. ~~Whether the controlled account needs central-bank approval as e-money or a payment service.~~ The author reports legal has confirmed it (batch 4); the engine records the status. Keep the written advice on file.
 6. The `market_reference` sources: the author's team opens each one (A9), keeps or drops it, then sets
    `approved_by_author: true`.
 7. The fee-ceiling reference (1.5% a month): kept, on two sources (A10). The author's team confirms which
    product of the public scheme carries the 1.5% charge.
 
 8. The **funders' loss budget per cohort** (`development.funder_loss_budget_per_cohort`): the DFI and the guarantor agree what they can lose.
-9. The **all-in cap** (`pricing.all_in_rate_cap_pa`) and whether a DFI product at 18% a year all-in is treated as the author expects. Legal to confirm.
+9. ~~The **all-in cap** and its legal treatment.~~ The author reports legal has confirmed it (batch 4). Keep the written advice on file.
 10. The DFI's **cost of funds**, and what counts as "additional" (definition and the `gates.gate4_*` pass marks).
 
 11. The **trip wire line**, the minimum number of loans with a known outcome before it can fire, and who is the named officer who can lift it. Set it above the loss rate you plan for, or it fires on normal days.
@@ -143,9 +147,9 @@ the cash chance must be about 1% or less at 25% recovered (then the guarantor ne
 
 13. **Each party's own costs and hurdles:** the DFI's cost of funds, equity share and cost of equity; the guarantor's cost of capital, admin cost per bridge, and how long its capital is set aside per cohort. The demo values are placeholders and carry no meaning.
 
-14. **How the DFI and the guarantor split the reserve** (`layers.reserve_funded_by_guarantor_pct`), the escrow terms (funded up front, ring-fenced, so the guarantor's cover does not rest on a promise), when unused reserve is released, and how recoveries after write-off are treated.
+14. The reserve split is decided (the DFI funds all of it). Still open: the escrow terms (funded up front, ring-fenced, so the guarantor's cover does not rest on a promise), when unused reserve is released, and how recoveries after write-off are treated.
 
-16. The **real cohort size** (it sets the stop lines' minimum loans and how noisy a cohort is) and the **cash-payment chance with a controlled account only**, which has not been asked yet.
+16. The cohort size and the controlled-account cash chance are answered as assumptions (100 loans, 5%). Still open: the real stop-line minimums (50 is my suggestion) and the funders' loss budget.
 15. The **real tenor** (the job plus the customer's payment cycle), and whether the damage, late and cash-payment chances rise with it; and the **real cash-payment chance** once a controlled account and split payments are in place.
 
 ## What the demo run shows (demo values, not findings)
