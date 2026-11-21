@@ -57,7 +57,7 @@ layers:
   reserve_funded_by_guarantor_pct: 0.0   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the DFI funds the whole reserve (batch 4 Q3d)
   guarantor_enabled: true               # DEMO ONLY, not a finding
   guarantor_cover_pct: 0.7              # AUTHOR ASSUMPTION 21 Nov 2026, not a finding ("we guarantee up to 70%")
-  guarantor_cap: 25000                  # DEMO ONLY, not a finding: scaled by 5 with the cohort
+  guarantor_cap: 1500000                # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: no cap, 70% of every loss above the reserve (batch 6 Q2d); set equal to the cohort cap so it cannot bind
 financier:
   type: development_institution          # author decision, 20 Nov 2026
   moneylender_caps: {secured: 0.12, unsecured: 0.18}
@@ -65,7 +65,7 @@ financier:
   capital_pct_of_drawn: 0.08   # DEMO ONLY, not a finding
   cost_of_equity_pa: 0.03   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the DFI's required return on its reserve money, 3% (batch 5 Q1b)
 guarantor:                              # the guarantee provider's own costs (author decision A15)
-  cost_of_capital_pa: 0.10   # DEMO ONLY, not a finding
+  cost_of_capital_pa: 0.03   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the guarantor's required return, 3% (batch 6 Q1)
   admin_cost_per_bridge: 2   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: RM2 a loan (batch 5 Q3a; the same as the demo's placeholder)
 compliance:                             # legal status of two points; the engine takes no view on the law. null = open item, confirmed = legal has confirmed (keep the written advice on file)
   controlled_account_legal_status: confirmed   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the author reports legal has confirmed both points (batch 4 Q5a); keep the written advice on file

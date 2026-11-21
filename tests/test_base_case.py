@@ -13,7 +13,7 @@ BASE = ROOT / "config" / "params.base_case.yaml"
 DEMO = ROOT / "config" / "params.demo.yaml"
 
 # exactly the values the author chose or implied; every other value must equal the demo's
-AUTHOR_KEYS = {"tenor.typical_days", "pricing.cost_to_serve_per_bridge", "financier.cost_of_funds_pa", "financier.cost_of_equity_pa", "simulation.amount_distribution.mean",
+AUTHOR_KEYS = {"tenor.typical_days", "pricing.cost_to_serve_per_bridge", "financier.cost_of_funds_pa", "financier.cost_of_equity_pa", "guarantor.cost_of_capital_pa", "layers.guarantor_cap", "simulation.amount_distribution.mean",
                "caps.per_bridge", "caps.per_borrower_live", "caps.step_up_tiers", "layers.guarantor_cover_pct", "pricing.guarantee_fee_rate_on_drawn", "pricing.flat_fee_per_bridge",
                "simulation.outcome_probs.on_time", "simulation.outcome_probs.late",
                "simulation.outcome_probs.dispute", "simulation.outcome_probs.abandoned",
@@ -21,7 +21,7 @@ AUTHOR_KEYS = {"tenor.typical_days", "pricing.cost_to_serve_per_bridge", "financ
                "simulation.recovery_rate_by_outcome.dispute", "viability_sliders.bypass_chance",
                "layers.reserve_funded_by_guarantor_pct", "development.funder_loss_budget_per_cohort", "compliance.controlled_account_legal_status", "compliance.all_in_cap_legal_status"}
 # placeholders scaled with the author's cohort of 100 loans (batch 4 Q2); every one is still marked DEMO ONLY, not an assumption
-SCALED_KEYS = {"layers.first_loss_reserve", "layers.guarantor_cap", "caps.per_sponsor_cohort", "caps.pilot_total", "caps.per_supplier_live", "sliders.first_loss_reserve"}
+SCALED_KEYS = {"layers.first_loss_reserve", "caps.per_sponsor_cohort", "caps.pilot_total", "caps.per_supplier_live", "sliders.first_loss_reserve"}
 # thresholds proposed by me, not the author
 SUGGESTED_KEYS = {"stop_lines.bypass_rate_min_bridges", "stop_lines.loss_rate_min_bridges"}
 
@@ -66,7 +66,7 @@ def test_batch_four_answers(base):
     assert base["development"]["funder_loss_budget_per_cohort"] is None             # not decided yet
     assert base["compliance"] == {"controlled_account_legal_status": "confirmed", "all_in_cap_legal_status": "confirmed"}
     assert base["financier"]["cost_of_equity_pa"] == 0.03 and base["guarantor"]["admin_cost_per_bridge"] == 2
-    assert base["layers"]["first_loss_reserve"] == 50000 and base["layers"]["guarantor_cap"] == 25000
+    assert base["layers"]["first_loss_reserve"] == 50000 and base["layers"]["guarantor_cap"] == base["caps"]["per_sponsor_cohort"] and base["guarantor"]["cost_of_capital_pa"] == 0.03
 
 
 def test_every_assumption_is_marked_and_it_still_says_demo(base):

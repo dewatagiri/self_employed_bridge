@@ -43,7 +43,9 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 | Funders' loss budget per cohort | not decided yet (batch 4) | `development.funder_loss_budget_per_cohort: null` |
 | Legal status: controlled account (e-money or payment service) and the 18% all-in cap | the author reports legal has confirmed both (batch 4) | `compliance.*_legal_status: confirmed`; the engine records it and does not judge the law. Keep the written advice on file |
 | The DFI's required return on the reserve money it ties up | 3% (batch 5) | `financier.cost_of_equity_pa: 0.03` |
-| The guarantor's required return | **not given** ("other", no number yet); the demo's 10% placeholder stays | `guarantor.cost_of_capital_pa: 0.10`, DEMO ONLY |
+| The guarantor's required return | 3% (batch 6) | `guarantor.cost_of_capital_pa: 0.03` |
+| Guarantor cap | none: 70% of every loss above the reserve (batch 6) | `layers.guarantor_cap: 1500000`, equal to the cohort cap so it cannot bind (the engine reads null as 0, so "no cap" is a number too big to reach) |
+| Reserve size | "up to programme size, e.g. 1000 clients" (batch 6): unclear, so **not changed**; RM50,000 per cohort of 100 stays a placeholder | `layers.first_loss_reserve: 50000`; see the question asked in batch 7 |
 | The guarantor's admin cost per loan | RM2 (batch 5; same as the placeholder) | `guarantor.admin_cost_per_bridge: 2` |
 | Who lifts the loss trip wire | the guarantor (batch 5) | a process rule: the engine has no user roles, the line is changed in the config as a recorded decision, so keep that change under the guarantor's sign-off |
 | Stop-line minimum loans | 50, my suggestion (half the cohort), not the author's | `stop_lines.*_min_bridges: 50` |
@@ -56,9 +58,9 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 
 `pricing.flat_fee_per_bridge` is 360 only so the older report sections agree with the cap (a placeholder). The reserve (RM50,000) and the guarantor cap (RM25,000) are the demo's ratios scaled ×5 to the cohort of 100; they are not the author's numbers.
 
-**What it shows** (1,000 groups of about 96 loans; reserve RM50,000 all from the DFI; 10% recovered on cash payments). After funding the reserve the DFI and guarantor together lose about
-**RM306 per loan** at 5% cash. Before the reserve's funding cost, the all-in rate that covers every cost is 11.3% a year against the 18% cap, so the product itself covers its running costs;
-the loss comes from the reserve, which is spent in about 63% of cohorts, and the guarantor earns below its hurdle (it loses in 54% of cohorts). Joint result per loan, after funding the reserve:
+**What it shows** (1,000 groups of about 96 loans; reserve RM50,000 all from the DFI; 10% recovered on cash payments; guarantor with no cap and a 3% required return). At 5% cash the DFI and guarantor together lose about **RM306 per loan** after funding the reserve.
+Before the reserve's funding cost, the rate that covers every cost is 15.7% a year against the 18% cap. The guarantor, with no cap, earns about −1.3% a year on its capital against its 3% hurdle, and loses in 54% of cohorts; its worst-5% cohorts lose about RM40,000.
+One caution: with no cap the engine sets aside the whole cohort cap as the guarantor's capital, which overstates the capital charge. Joint result per loan, after funding the reserve:
 
 | Cash chance | 10% recovered (the answer) | 25% recovered | 50% recovered |
 |---|---|---|---|
@@ -69,8 +71,8 @@ the loss comes from the reserve, which is spent in about 63% of cohorts, and the
 | 1% | +RM67 | +RM83 | +RM109 |
 | 0% | +RM161 | +RM161 | +RM161 |
 
-At 10% recovered, a working split of the cap exists only at about **1% cash or less**; at 5% the DFI would need about 26% a year and the guarantor about 5%. Chasing cash payers (25% instead of 10%) is worth about RM78 per loan at 5% cash.
-The guarantor's required return is still a placeholder (10%), so its figures are not final.
+At 10% recovered, the two together cover costs from about 1% cash, but a working split of the cap exists only at **0% cash**; at 5% the DFI would need about 25% a year and the guarantor about 10%. Chasing cash payers (25% instead of 10%) is worth about RM78 per loan at 5% cash.
+
 
 ## Interpretations made in the build
 
@@ -153,7 +155,7 @@ The guarantor's required return is still a placeholder (10%), so its figures are
 
 14. The reserve split is decided (the DFI funds all of it). Still open: the escrow terms (funded up front, ring-fenced, so the guarantor's cover does not rest on a promise), when unused reserve is released, and how recoveries after write-off are treated.
 
-16. The cohort size and the controlled-account cash chance are answered as assumptions (100 loans, 5%). The guarantor's required return is still to be given. Still open: the real stop-line minimums (50 is my suggestion) and the funders' loss budget.
+16. The cohort size and the controlled-account cash chance are answered as assumptions (100 loans, 5%). The reserve size is unclear (batch 6). Still open: the real stop-line minimums (50 is my suggestion) and the funders' loss budget.
 15. The **real tenor** (the job plus the customer's payment cycle), and whether the damage, late and cash-payment chances rise with it; and the **real cash-payment chance** once a controlled account and split payments are in place.
 
 ## What the demo run shows (demo values, not findings)
