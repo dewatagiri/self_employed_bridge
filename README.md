@@ -235,13 +235,14 @@ with its money tied up charged at its own required return, a table of what each 
 
 ## The author's base case
 
-`config/params.base_case.yaml` is the demo with the author's own answers on top (a 60-day tenor, 3% damage with 70% lost on each damaged loan, 8%
-cash payments to the painter with 25% recovered because no controls exist yet, 20% late payers who do pay, 70% cover, a 3.5% guarantee fee, an 18% a year
+`config/params.base_case.yaml` is the demo with the author's own answers on top (a 90-day tenor, RM5 to serve, loans of about RM10,000, the DFI's cost of funds at 3%,
+3% damage with 70% lost on each damaged loan, 20% late payers who do pay, 8% cash payments to the painter with 25% recovered, 70% cover, a 3.5% guarantee fee, an 18% a year
 all-in cap), each marked `AUTHOR ASSUMPTION`. They are assumptions, not findings, and the rest is still placeholder, so its reports still say DEMO PARAMETERS.
 Open it with `bridge simulate --config config/params.base_case.yaml --out report.html` ([`docs/base_case_report.html`](docs/base_case_report.html)).
 
-On this case credit loss is about 8% of money lent against 3% earned over 60 days, so the product is priced well below cost. Controls that bring cash payments to about
-1% are necessary but not enough on their own: it also needs a lower cost to serve or a longer tenor. See `docs/DECISIONS.md` for the table.
+On this case credit loss is about 8% of money lent against 4.4% earned over 90 days, so it is priced below cost **while 8% of customers pay the painter in cash**. The two
+parties break even together at about 2% cash payments (25% recovered), and both earn their required return at about 1% or less. The cash-payment chance is the number to pin down.
+`docs/DECISIONS.md` has the table.
 
 ## Path to viability
 

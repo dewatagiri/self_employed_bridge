@@ -13,7 +13,8 @@ BASE = ROOT / "config" / "params.base_case.yaml"
 DEMO = ROOT / "config" / "params.demo.yaml"
 
 # exactly the values the author chose or implied; every other value must equal the demo's
-AUTHOR_KEYS = {"tenor.typical_days", "layers.guarantor_cover_pct", "pricing.guarantee_fee_rate_on_drawn", "pricing.flat_fee_per_bridge",
+AUTHOR_KEYS = {"tenor.typical_days", "pricing.cost_to_serve_per_bridge", "financier.cost_of_funds_pa", "simulation.amount_distribution.mean",
+               "caps.per_bridge", "caps.per_borrower_live", "caps.step_up_tiers", "layers.guarantor_cover_pct", "pricing.guarantee_fee_rate_on_drawn", "pricing.flat_fee_per_bridge",
                "simulation.outcome_probs.on_time", "simulation.outcome_probs.late", "simulation.outcome_probs.bypass",
                "simulation.outcome_probs.dispute", "simulation.outcome_probs.abandoned",
                "simulation.recovery_rate_by_outcome.late", "simulation.recovery_rate_by_outcome.bypass",
@@ -41,7 +42,7 @@ def test_only_the_authors_assumptions_differ_from_the_demo(base):
 
 
 def test_the_answers_are_recorded_as_given(base):
-    assert base["tenor"]["typical_days"] == 60                                       # Q1: 60 days
+    assert base["tenor"]["typical_days"] == 90                                       # batch 3 Q2: 90 days
     assert base["layers"]["guarantor_cover_pct"] == 0.7 and base["pricing"]["guarantee_fee_rate_on_drawn"] == 0.035
     assert base["pricing"]["all_in_rate_cap_pa"] == 0.18
     p, r = base["simulation"]["outcome_probs"], base["simulation"]["recovery_rate_by_outcome"]
@@ -50,19 +51,21 @@ def test_the_answers_are_recorded_as_given(base):
     assert sum(p.values()) == pytest.approx(1.0) and p["on_time"] == pytest.approx(0.69)
     assert r["dispute"] == r["abandoned"] == pytest.approx(0.3)                      # Q4: 70% of a damaged loan lost
     assert r["bypass"] == 0.25 and r["late"] == 1.0                                  # 25% recovered on cash; late payers do pay
-    assert base["pricing"]["cost_to_serve_per_bridge"] == 25                         # Q5: not known, placeholder kept
+    assert base["pricing"]["cost_to_serve_per_bridge"] == 5                          # batch 3 Q3: RM5 with automation
+    assert base["financier"]["cost_of_funds_pa"] == 0.03                             # batch 3 Q5: 3%
+    assert base["simulation"]["amount_distribution"]["mean"] == 9.55                 # batch 3 Q4: average bridge about RM10,000
 
 
 def test_every_assumption_is_marked_and_it_still_says_demo(base):
     text = BASE.read_text(encoding="utf-8")
     assert "assumptions, not findings" in text and is_demo(base) and "case" in base["meta"]
     lines = text.splitlines()
-    for needle in ("typical_days: 60", "guarantee_fee_rate_on_drawn: 0.035", "guarantor_cover_pct: 0.7  ", "all_in_rate_cap_pa: 0.18",
+    for needle in ("typical_days: 90", "guarantee_fee_rate_on_drawn: 0.035", "guarantor_cover_pct: 0.7  ", "all_in_rate_cap_pa: 0.18",
                    "outcome_probs: {on_time: 0.69", "recovery_rate_by_outcome: {on_time: 1.0, late: 1.0, bypass: 0.25, dispute: 0.3", "bypass_chance: [0.01, 0.03, 0.05, 0.08]"):
         hits = [ln for ln in lines if needle in ln]
         assert len(hits) == 1 and "AUTHOR ASSUMPTION" in hits[0], needle
     # the one derived number is a placeholder, not an assumption of the author
-    assert [ln for ln in lines if "flat_fee_per_bridge: 70" in ln][0].count("DEMO ONLY") == 1
+    assert [ln for ln in lines if "flat_fee_per_bridge: 360" in ln][0].count("DEMO ONLY") == 1
 
 
 def test_it_runs_and_the_report_opens_on_the_authors_case(base):
@@ -73,6 +76,6 @@ def test_it_runs_and_the_report_opens_on_the_authors_case(base):
     h = report.render_simulation(out, sim.sensitivity(base, out["draws"]), None, base, "config/params.base_case.yaml", None, None, None, None, vg)
     assert "Author&#x27;s base case, 21 Nov 2026" in h or "Author's base case, 21 Nov 2026" in h
     assert "DEMO PARAMETERS" in h
-    # the viability sliders start on the author's answers: 60 days (position 2), 3% damage (position 1), 8% cash (position 3)
-    for key, pos in (("tenor_days", 2), ("damage_rate", 1), ("bypass_chance", 3)):
+    # the viability sliders start on the author's answers: 90 days (position 3), 3% damage (position 1), 8% cash (position 3), RM5 to serve (position 0)
+    for key, pos in (("tenor_days", 3), ("damage_rate", 1), ("bypass_chance", 3), ("cost_to_serve_per_bridge", 0)):
         assert re.search(rf'id="vz_{key}"[^>]*value="{pos}"', h), key

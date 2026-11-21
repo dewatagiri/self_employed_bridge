@@ -22,15 +22,15 @@ release:
   auto_approve_max_amount: 5000         # DEMO ONLY, not a finding
   template_match_min: 0.8               # DEMO ONLY, not a finding
 caps:
-  per_bridge: 10000                     # DEMO ONLY, not a finding
-  per_borrower_live: 15000              # DEMO ONLY, not a finding
+  per_bridge: 25000                     # DEMO ONLY, not a finding: raised so the larger loans are not cut off by a placeholder cap
+  per_borrower_live: 40000              # DEMO ONLY, not a finding: raised with the per-bridge cap
   per_supplier_live: 50000              # DEMO ONLY, not a finding
   per_sponsor_cohort: 200000            # DEMO ONLY, not a finding
   pilot_total: 500000                   # DEMO ONLY, not a finding
   max_live_bridges_per_borrower: 2      # DEMO ONLY, not a finding
   step_up_tiers:                        # author decision A11; tiers after clean repayments
-    - {after_clean_repayments: 3, max_live_bridges_per_borrower: 3, per_borrower_live: 25000}   # DEMO ONLY, not a finding
-    - {after_clean_repayments: 8, max_live_bridges_per_borrower: 4, per_borrower_live: 40000}   # DEMO ONLY, not a finding
+    - {after_clean_repayments: 3, max_live_bridges_per_borrower: 3, per_borrower_live: 60000}   # DEMO ONLY, not a finding: raised so a step-up stays above the base
+    - {after_clean_repayments: 8, max_live_bridges_per_borrower: 4, per_borrower_live: 80000}   # DEMO ONLY, not a finding: raised so a step-up stays above the base
 borrower:
   require_credit_bureau_check: true
   decline_on_adverse_record: true
@@ -39,11 +39,11 @@ borrower:
 tenor:
   grace_days: 7                         # DEMO ONLY, not a finding
   two_step_release_over_amount: 8000    # DEMO ONLY, not a finding
-  typical_days: 60   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (tenor, Q1)
+  typical_days: 90   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (tenor: 90 days, batch 3 Q2a)
 pricing:
-  flat_fee_per_bridge: 70               # DEMO ONLY, not a finding: arithmetic from the cap, the guarantee fee, the 60-day tenor and an average loan
+  flat_fee_per_bridge: 360              # DEMO ONLY, not a finding: arithmetic from the cap, the guarantee fee, the 90-day tenor and an average RM10,000 loan
   guarantee_fee_rate_on_drawn: 0.035    # AUTHOR ASSUMPTION 21 Nov 2026, not a finding ("say we take 3.5% pa")
-  cost_to_serve_per_bridge: 25          # DEMO ONLY, not a finding
+  cost_to_serve_per_bridge: 5           # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (RM5 with automation, batch 3 Q3a)
   all_in_rate_cap_pa: 0.18   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding ("max we can charge is 1.5% a month, 18% a year")
   fee_ceiling_reference:
     rate_per_month: 0.015               # author decision A10: two sources give the same figure
@@ -61,7 +61,7 @@ layers:
 financier:
   type: development_institution          # author decision, 20 Nov 2026
   moneylender_caps: {secured: 0.12, unsecured: 0.18}
-  cost_of_funds_pa: 0.04   # DEMO ONLY, not a finding
+  cost_of_funds_pa: 0.03   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (the DFI's cost of funds, batch 3 Q5a)
   capital_pct_of_drawn: 0.08   # DEMO ONLY, not a finding
   cost_of_equity_pa: 0.12   # DEMO ONLY, not a finding
 guarantor:                              # the guarantee provider's own costs (author decision A15)
@@ -94,7 +94,7 @@ simulation:
   n_runs: 1000                          # DEMO ONLY, not a finding
   seed: 42
   cohort_days: 90   # DEMO ONLY, not a finding
-  amount_distribution: {kind: lognormal, mean: 8.3, sigma: 0.5}   # DEMO ONLY, not a finding
+  amount_distribution: {kind: lognormal, mean: 9.55, sigma: 0.5}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (average bridge about RM10,000, batch 3 Q4d; the mean of ln RM is arithmetic from that)
   deposit_share_of_materials: {low: 0.1, high: 0.6}   # DEMO ONLY, not a finding
   outcome_probs: {on_time: 0.69, late: 0.20, bypass: 0.08, dispute: 0.018, abandoned: 0.012}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: damage 3% (Q3, split 3:2 as in the demo); cash to the painter 8% with no controls yet (batch 2, Q1e and Q2d); late 20% (Q5c)
   recovery_rate_by_outcome: {on_time: 1.0, late: 1.0, bypass: 0.25, dispute: 0.3, abandoned: 0.3}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 70% of a damaged loan is lost (Q4, and suppliers rarely take materials back); only 25% recovered when the customer pays the painter in cash; late payers do pay in full
