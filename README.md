@@ -233,6 +233,14 @@ two of them. What the cohort does not spend goes back (A16). The report shows ea
 with its money tied up charged at its own required return, a table of what each reserve size costs and does for each, and the
 **joint result**: what the two of them lose or earn together.
 
+## The author's base case
+
+`config/params.base_case.yaml` is the demo with the author's own answers on top (a 60-day tenor, 3% damage, 70% lost on each damaged loan,
+70% cover, a 3.5% guarantee fee, an 18% a year all-in cap), each marked `AUTHOR ASSUMPTION`. They are assumptions, not findings, and the
+rest is still placeholder, so its reports still say DEMO PARAMETERS. Open it with
+`bridge simulate --config config/params.base_case.yaml --out report.html` ([`docs/base_case_report.html`](docs/base_case_report.html)).
+On this case the product is priced below cost whatever the cost to serve; the cash-payment chance and the recovery rates are the unknowns that matter most.
+
 ## Path to viability
 
 Low-ticket loans are usually not profitable, and serving them is the mandate (decision A18). A loan earns **by time** (the cap ×
@@ -277,7 +285,7 @@ a share of the money lent on loans with a known outcome, **new loans and top-ups
 [`docs/DECISIONS.md`](docs/DECISIONS.md) (every decision and interpretation, open items) ·
 [`docs/WALKTHROUGH.md`](docs/WALKTHROUGH.md) (real outputs, go-live order) ·
 [`docs/demo_report.html`](docs/demo_report.html) and [`docs/demo_gates.html`](docs/demo_gates.html)
-(open in a browser) · 217 tests (`pytest`).
+(open in a browser) · 221 tests (`pytest`).
 
 ## Licence
 

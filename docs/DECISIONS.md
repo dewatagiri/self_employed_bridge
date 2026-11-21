@@ -26,6 +26,27 @@ here so it can be confirmed or reversed. Nothing below is a finding.
 | A12 | 20 Nov 2026 | Build a staff page so people can use the engine (option 2 of 3), beyond handover §8's "no front end beyond the HTML report". | `bridge serve`: local page on 127.0.0.1, standard library only, SQLite record (`bridge.db`). Pure `ledger.py` derives exposure, layers left and the gates log from the record. No payments, no contact with anyone. |
 | A13 | 20 Nov 2026 | **Developmental pricing.** If the product runs at the borrower's all-in charge cap, it is priced below a commercial return on purpose. The funders know they will lose money and accept it in return for additionality. | `development.pricing_basis: developmental`. The simulation report shows the planned loss (counting every funder, sponsor reserve included) with sliders, never a "return" claim. Additionality is measured, not assumed: gate 4 and two answers recorded at release. `pricing.all_in_rate_cap_pa` and `development.funder_loss_budget_per_cohort` are settings, null in the template. |
 
+## The author's base case (21 Nov 2026)
+
+`config/params.base_case.yaml` is the demo file with the author's own answers on top. They are **assumptions, not findings**: no
+Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPTION` in the file; a test checks that nothing else differs from the demo.
+
+| Question | Answer | Setting |
+|---|---|---|
+| Tenor (supplier paid until customer pays) | 60 days | `tenor.typical_days: 60` |
+| Customer pays the painter in cash | not sure, placeholder 5% kept | `simulation.outcome_probs.bypass: 0.05` |
+| Damage rate (not completed or rejected) | 3% | dispute 1.8% + abandoned 1.2% (3:2 as in the demo) |
+| Loss on a damaged loan | 70% | `recovery_rate_by_outcome.dispute` and `.abandoned`: 0.3 |
+| Cost to serve per loan | not known, placeholder RM25 kept | `pricing.cost_to_serve_per_bridge: 25` |
+| Said earlier in the conversation | 70% cover, 3.5% guarantee fee, 18% a year all-in cap | `layers.guarantor_cover_pct`, `pricing.guarantee_fee_rate_on_drawn`, `pricing.all_in_rate_cap_pa` |
+
+`pricing.flat_fee_per_bridge` is 70 only so the older report sections agree with the cap (a placeholder, not an assumption).
+
+**What it shows** (1,500 groups, reserve RM10,000 funded 50/50): credit loss is 5.1% of money lent while a 60-day loan earns 3.0% at the cap, so
+the DFI and guarantor lose about RM107 per loan at RM25 to serve, and **at every cost to serve from RM5 to RM35 the product is priced below cost**.
+The unknowns that matter most are the cash-payment chance (5% of loans paid in cash with half lost is 2.5% of money lent, more than the damage)
+and the recovery rates. At 1% cash and RM25 to serve it still needs about 31% a year all-in against the 18% cap.
+
 ## Interpretations made in the build
 
 | # | Where | Choice | Why / how to change |

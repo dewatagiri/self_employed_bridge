@@ -152,7 +152,7 @@ def cmd_simulate(args, cfg):
                          + (f"guarantor {rrb['guarantor']['ar_return_on_capital_pa']:.1%}, " if rrb['guarantor'] else "")
                          + f"joint result RM{rrb['joint_result']:,.0f} per group; "
                          f"all-in rate covering every cost {rrb['cost_covering_all_in_after_reserve_pa']:.1%} vs cap {rrb['all_in_cap_pa']:.1%}")
-        lines.append(f"  Cost-covering all-in rate {rrb['cost_covering_all_in_pa']:.1%} a year vs cap {rrb['all_in_cap_pa']:.1%}: "
+        lines.append(f"  Before funding the reserve: cost-covering all-in rate {rrb['cost_covering_all_in_pa']:.1%} a year vs cap {rrb['all_in_cap_pa']:.1%}: "
                      f"gap {rrb['gap_pa']:+.1%} = RM{rrb['gap_per_loan']:,.2f} per loan")
     if args.out:
         sens = simulate.sensitivity(cfg, out["draws"])

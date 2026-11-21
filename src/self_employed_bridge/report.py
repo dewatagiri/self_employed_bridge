@@ -608,9 +608,9 @@ ax.forEach(function(a){document.getElementById('rr_'+a).addEventListener('input'
         '<h3>Who takes the credit loss, and what price covers every cost</h3>'
         '<div class="wrap"><table><tbody>'
         '<tr><td>Share of the credit loss: the reserve (DFI + guarantor money) / guarantor above it / DFI above it</td><td class="n"><span id="rrx_sp">—</span> / <span id="rrx_ga">—</span> / <span id="rrx_ls">—</span></td></tr>'
-        '<tr><td>All-in rate that would cover every cost (both break-even fees added)</td><td class="n" id="rrx_cc">—</td></tr>'
+        '<tr><td>All-in rate that would cover every cost BEFORE funding the reserve (both break-even fees added)</td><td class="n" id="rrx_cc">—</td></tr>'
         '<tr><td>All-in cap on the borrower</td><td class="n" id="rrx_cap">—</td></tr>'
-        '<tr><td>Gap: how far below cost the cap is, a year (+ = priced below cost)</td><td class="n" id="rrx_gap">—</td></tr>'
+        '<tr><td>Gap before the reserve: how far below cost the cap is, a year (+ = priced below cost)</td><td class="n" id="rrx_gap">—</td></tr>'
         '<tr><td>The same gap per loan: what developmental pricing deliberately gives up</td><td class="n" id="rrx_gpl">—</td></tr>'
         '<tr><td><strong>Joint result of the two parties per group, after funding the reserve</strong></td><td class="n" id="rrx_jr">—</td></tr>'
         '<tr><td>All-in rate that would cover every cost, including funding the reserve</td><td class="n" id="rrx_cc2">—</td></tr>'
@@ -824,6 +824,7 @@ def render_simulation(out: dict, sens: list[dict], grid, cfg: dict, config_path:
              "<li>The stop line uses the bypass rate to date, tested once the minimum number of bridges is out.</li>"
              "<li>Not modelled: changes in behaviour from pricing or margin of advance, correlation between bridges, "
              "collection costs beyond cost to serve, timing of cash.</li></ul>"]
+    case = get(cfg, "meta.case")
     html_ = page("Cohort simulation", config_path, bool(get(cfg, "meta.demo")), "\n".join(body),
-                 subtitle=f'seed {get(cfg, "simulation.seed")} · {get(cfg, "simulation.n_runs"):,} runs')
+                 subtitle=(f"{case} · " if case else "") + f'seed {get(cfg, "simulation.seed")} · {get(cfg, "simulation.n_runs"):,} runs')
     return html_.replace("</style>", SIM_CSS + "</style>", 1)
