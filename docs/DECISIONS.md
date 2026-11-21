@@ -47,6 +47,10 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 | Guarantor cap | none: 70% of every loss above the reserve (batch 6) | `layers.guarantor_cap: 1500000`, equal to the cohort cap so it cannot bind (the engine reads null as 0, so "no cap" is a number too big to reach) |
 | Reserve size | RM50,000 per cohort of 100 loans, confirmed (batch 8; the earlier "programme size" answer was unclear) | `layers.first_loss_reserve: 50000` |
 | Guarantor exposure limit | keep no cap (batch 8) | as above |
+| How the DFI sees the reserve | a grant (batch 10): spent reserve is the programme's cost; the DFI judges it on jobs and additionality, not return | no setting; the report shows the cost per additional borrower, and the DFI's "return on capital" after the reserve is a cost view, not a target |
+| Cash-payment chance with split payments | no change, 5% (batch 10) | `outcome_probs.bypass: 0.05` |
+| Damage rate with a controlled account | keep 3% (batch 10) | dispute 1.8% + abandoned 1.2% |
+| Most the DFI will pay per additional borrower | batch 10 answer "15" is unclear (RM15? RM1,500?); **not recorded** | no setting yet |
 | Programme size | 10 cohorts of 100 loans, 1,000 clients (batch 9) | `caps.pilot_total: 10000000` |
 | Late payers | keep 20% (batch 9) | `outcome_probs.late: 0.20` |
 | Bypass stop line | keep 10% (batch 9) | `stop_lines.pause_if_bypass_rate_over: 0.10` |
