@@ -52,7 +52,7 @@ pricing:
       - "public contract financing scheme charge, 1.5% a month (handover s.10; author to confirm the product)"
       - "top of the market invoice financing range, 0.8-1.5% a month (market_reference, pending A9)"
 layers:
-  first_loss_reserve: 50000             # DEMO ONLY, not a finding: scaled by 5 with the cohort, keeping the demo's ratio of reserve to cohort size
+  first_loss_reserve: 50000             # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: RM50,000 per cohort of 100 loans, confirmed (batch 8 Q1)
   unused_reserve_returned: true         # author decision A16: what the cohort does not spend goes back to the sponsor once its loans are closed and recoveries are in
   reserve_funded_by_guarantor_pct: 0.0   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the DFI funds the whole reserve (batch 4 Q3d)
   guarantor_enabled: true               # DEMO ONLY, not a finding
@@ -80,7 +80,7 @@ stop_lines:
   pause_if_bypass_rate_over: 0.10       # DEMO ONLY, not a finding
   bypass_rate_min_bridges: 50   # SUGGESTION, not the author's: about half the cohort of 100
   pause_if_loss_rate_over: 0.05         # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 5% (batch 7 Q3); the guarantor lifts it (batch 5). Loss trip wire (author decision A14): pause new bridges when the loss so far, after recoveries, is above this share of money lent. Demo leaves it off; the damage section shows its effect
-  loss_rate_min_bridges: 50   # SUGGESTION, not the author's: about half the cohort of 100
+  loss_rate_min_bridges: 30   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 30 known loans before the trip wire can fire (batch 8 Q3)
   outcome_lag_bridges: 10   # DEMO ONLY, not a finding
   target_quote_to_supplier_payment_hours: 4   # DEMO ONLY, not a finding
 gates:
