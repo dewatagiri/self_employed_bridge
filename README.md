@@ -235,11 +235,13 @@ with its money tied up charged at its own required return, a table of what each 
 
 ## The author's base case
 
-`config/params.base_case.yaml` is the demo with the author's own answers on top (a 60-day tenor, 3% damage, 70% lost on each damaged loan,
-70% cover, a 3.5% guarantee fee, an 18% a year all-in cap), each marked `AUTHOR ASSUMPTION`. They are assumptions, not findings, and the
-rest is still placeholder, so its reports still say DEMO PARAMETERS. Open it with
-`bridge simulate --config config/params.base_case.yaml --out report.html` ([`docs/base_case_report.html`](docs/base_case_report.html)).
-On this case the product is priced below cost whatever the cost to serve; the cash-payment chance and the recovery rates are the unknowns that matter most.
+`config/params.base_case.yaml` is the demo with the author's own answers on top (a 60-day tenor, 3% damage with 70% lost on each damaged loan, 8%
+cash payments to the painter with 25% recovered because no controls exist yet, 20% late payers who do pay, 70% cover, a 3.5% guarantee fee, an 18% a year
+all-in cap), each marked `AUTHOR ASSUMPTION`. They are assumptions, not findings, and the rest is still placeholder, so its reports still say DEMO PARAMETERS.
+Open it with `bridge simulate --config config/params.base_case.yaml --out report.html` ([`docs/base_case_report.html`](docs/base_case_report.html)).
+
+On this case credit loss is about 8% of money lent against 3% earned over 60 days, so the product is priced well below cost. Controls that bring cash payments to about
+1% are necessary but not enough on their own: it also needs a lower cost to serve or a longer tenor. See `docs/DECISIONS.md` for the table.
 
 ## Path to viability
 

@@ -34,18 +34,34 @@ Malaysian loss data exists. Every value the author chose carries `AUTHOR ASSUMPT
 | Question | Answer | Setting |
 |---|---|---|
 | Tenor (supplier paid until customer pays) | 60 days | `tenor.typical_days: 60` |
-| Customer pays the painter in cash | not sure, placeholder 5% kept | `simulation.outcome_probs.bypass: 0.05` |
 | Damage rate (not completed or rejected) | 3% | dispute 1.8% + abandoned 1.2% (3:2 as in the demo) |
 | Loss on a damaged loan | 70% | `recovery_rate_by_outcome.dispute` and `.abandoned`: 0.3 |
+| Suppliers take back unused materials | rarely | consistent with the 70%, so no change |
+| Controls on cash payments | none yet | the cash chance below is the uncontrolled one |
+| Customer pays the painter in cash | 8% | `outcome_probs.bypass: 0.08`; the slider runs from 1% (tight controls) to 8% |
+| Recovered when a customer pays the painter in cash | 25% | `recovery_rate_by_outcome.bypass: 0.25` |
+| Pay late | 20%, and they do pay | `outcome_probs.late: 0.20`; `recovery_rate_by_outcome.late: 1.0` (reading "pay late, but do pay" as paying in full) |
 | Cost to serve per loan | not known, placeholder RM25 kept | `pricing.cost_to_serve_per_bridge: 25` |
 | Said earlier in the conversation | 70% cover, 3.5% guarantee fee, 18% a year all-in cap | `layers.guarantor_cover_pct`, `pricing.guarantee_fee_rate_on_drawn`, `pricing.all_in_rate_cap_pa` |
 
-`pricing.flat_fee_per_bridge` is 70 only so the older report sections agree with the cap (a placeholder, not an assumption).
+`pricing.flat_fee_per_bridge` is 70 only so the older report sections agree with the cap (a placeholder, not an assumption). The demo's bypass stop line (10%
+after 20 loans, a placeholder) is still on, so groups with unlucky early cash payments stop lending: about 45 loans per group instead of 59.
 
-**What it shows** (1,500 groups, reserve RM10,000 funded 50/50): credit loss is 5.1% of money lent while a 60-day loan earns 3.0% at the cap, so
-the DFI and guarantor lose about RM107 per loan at RM25 to serve, and **at every cost to serve from RM5 to RM35 the product is priced below cost**.
-The unknowns that matter most are the cash-payment chance (5% of loans paid in cash with half lost is 2.5% of money lent, more than the damage)
-and the recovery rates. At 1% cash and RM25 to serve it still needs about 31% a year all-in against the 18% cap.
+**What it shows** (1,500 groups, reserve RM10,000 funded 50/50). Credit loss is **8.0% of money lent** while a 60-day loan earns **3.0%** at the cap, so the
+DFI and guarantor lose about **RM192 per loan** (RM65 per RM1,000 lent) and would need about 62% a year all-in against the 18% cap.
+
+The controls decide it. Joint result per loan, 60 days, RM25 to serve:
+
+| Cash chance | 25% recovered | 50% recovered | 75% recovered |
+|---|---|---|---|
+| 8% (no controls) | −RM192 | −RM134 | −RM76 |
+| 3% | −RM86 | −RM64 | −RM41 |
+| 1% | −RM41 | −RM33 | −RM26 |
+| 0% | −RM19 | −RM19 | −RM19 |
+
+Even with **perfect** control of cash payments (damage 3% at 70% lost, 20% late) the product is priced below cost at 60 days unless the cost to serve is about RM5 or less
+(RM5: +RM1 per loan). At **90 days** it works at RM15 to serve (+RM26 per loan, a working fee split exists) and is marginal at RM25. So it needs controls that bring cash
+payments to about 1% **and** either a lower cost to serve or a longer tenor.
 
 ## Interpretations made in the build
 

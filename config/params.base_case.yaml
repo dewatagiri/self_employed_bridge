@@ -96,8 +96,8 @@ simulation:
   cohort_days: 90   # DEMO ONLY, not a finding
   amount_distribution: {kind: lognormal, mean: 8.3, sigma: 0.5}   # DEMO ONLY, not a finding
   deposit_share_of_materials: {low: 0.1, high: 0.6}   # DEMO ONLY, not a finding
-  outcome_probs: {on_time: 0.82, late: 0.10, bypass: 0.05, dispute: 0.018, abandoned: 0.012}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (damage 3%, Q3, split 3:2 as in the demo); cash 5% (Q2, not sure) and late 10% are still placeholders
-  recovery_rate_by_outcome: {on_time: 1.0, late: 0.95, bypass: 0.5, dispute: 0.3, abandoned: 0.3}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding (70% of each damaged loan is lost, Q4); the other rates are placeholders
+  outcome_probs: {on_time: 0.69, late: 0.20, bypass: 0.08, dispute: 0.018, abandoned: 0.012}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: damage 3% (Q3, split 3:2 as in the demo); cash to the painter 8% with no controls yet (batch 2, Q1e and Q2d); late 20% (Q5c)
+  recovery_rate_by_outcome: {on_time: 1.0, late: 1.0, bypass: 0.25, dispute: 0.3, abandoned: 0.3}   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: 70% of a damaged loan is lost (Q4, and suppliers rarely take materials back); only 25% recovered when the customer pays the painter in cash; late payers do pay in full
   damage_dispute_share: 0.6   # DEMO ONLY, not a finding
 sliders:                                # values the report precomputes for its sliders
   margin_of_advance: [0.80, 0.85, 0.90, 0.95, 1.00]   # DEMO ONLY, not a finding
@@ -116,7 +116,7 @@ damage_sliders:                         # values the damage / trip wire section 
   loss_per_damaged_loan: [0.3, 0.5, 0.7, 1.0]   # DEMO ONLY, not a finding
   trip_wire: [null, 0.02, 0.03, 0.04, 0.06]   # DEMO ONLY, not a finding
 viability_sliders:                      # values the path-to-viability section precomputes; null = section hidden
-  bypass_chance: [0.01, 0.02, 0.03, 0.05]   # DEMO ONLY, not a finding
+  bypass_chance: [0.01, 0.03, 0.05, 0.08]   # AUTHOR ASSUMPTION 21 Nov 2026, not a finding: the slider runs from tight controls (1%) to none (8%)
   damage_rate: [0.02, 0.03, 0.04, 0.05]   # DEMO ONLY, not a finding
   loss_on_bad_loans_scale: [1.0, 0.75, 0.5]   # DEMO ONLY, not a finding
   tenor_days: [30, 45, 60, 90]   # DEMO ONLY, not a finding
